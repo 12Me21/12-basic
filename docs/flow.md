@@ -6,7 +6,7 @@
   >**IF** *condition* **THEN**  
   >&nbsp;&nbsp;&nbsp;&nbsp;*code*  
   >[ **ELSEIF** *condition* **THEN**  
-  >&nbsp;&nbsp;&nbsp;&nbsp;*code* ] [...]  
+  >&nbsp;&nbsp;&nbsp;&nbsp;*code* ] [ ... ]  
   >[ **ELSE**  
   >&nbsp;&nbsp;&nbsp;&nbsp;*code* ]  
   >**ENDIF**  
@@ -16,7 +16,7 @@
 
 * ### Infinite loop
   Runs *code* forever.
-  >**DO** *code* **LOOP*
+  >**DO** *code* **LOOP**
   
 * ### FOR loop  
   Runs *code* for each value of *variable* between *start* and *end*.
@@ -40,7 +40,7 @@
   Runs *code* if any *value* equals *switchValue*. **BREAK** is not required.
   >**SWITCH** *switchValue*  
   >&nbsp;&nbsp;&nbsp;&nbsp;[ **CASE** *value* [ , ... ]  
-  >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*code* ] [...]  
+  >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*code* ] [ ... ]  
   >&nbsp;&nbsp;&nbsp;&nbsp;[ **ELSE**  
   >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*code* ]  
   >**ENDSWITCH**
