@@ -1,13 +1,16 @@
-# `12-BASIC` documentation
-
 ## Types
 
 * ### Number
-  >*name*
+  >*name* = *123*
 * ### String
-  >*name*__$__  
+  >*name*__$__ = *"something"*  
+  >*name*__$__ = *"Line1*  
+  >*line2"*  
+  >*name*__$__ = *"escape quotes ""like this"""*  
+* ### Array
+  >*name*__#__ = *{1,2,3}*
   
-  Falsey values are `0` and `""`
+  Falsey values are `0`, `""`, and `{}`
 
 ## Flow control
 
@@ -24,9 +27,13 @@
   
 * ### Short IF block (ELSE/ELSEIF not allowed)
   >**IF** *condition* **THEN** *code*
-    
+
+* ### Infinite loop
+  Runs *code* forever.
+  >**DO** *code* **LOOP*
+  
 * ### FOR loop  
-  Runs *code* for each value of *variable* between *start* and *end*
+  Runs *code* for each value of *variable* between *start* and *end*.
   >**FOR** *variable* **=** *start* **TO** *end* [ **STEP** *step* ]  
   >&nbsp;&nbsp;&nbsp;&nbsp;*code*  
   >**NEXT** [ *variable* ]  
@@ -66,14 +73,10 @@
   
 ## Commands
 
-* ### PRINT
-  Outputs a list of values.
-  >**PRINT** [ *value* ] [ , ... ]  
-  
-* ### INPUT
-  Stores input into a list of variables.
-  >**INPUT** [ *variable* ] [ , ... ]
-  
+* ### SWAP
+  Swaps the values of two variables
+  >**SWAP** *variable1*,*variable2*
+
 * ### STOP
   Ends the program.
   >**STOP**
@@ -163,16 +166,17 @@
   >**CHR$(** *ascii* **)** -> *character$*
   * ### Length
   >**LEN(** *string$* **)** -> *length*
+  >**LENGTH(** *string$* **)** -> *length*
   * ### String to Number
-  >**VAL(** *string$* **)** -> *number*  
-  >**VAL(** *string$* **,** *base* **)** -> *number*
+  >**NUMBER(** *string$* **)** -> *number*  
+  >**NUMBER(** *string$* **,** *base* **)** -> *number*
   * ### Number to String
-  >**STR$(** *number* **)** -> *string$*  
-  >**STR$(** *number* **,** *length* **)** -> *string$*  
-  >**STR$(** *number* **,** *length* **,** *base* **)** -> *string$*
+  >**STRING$(** *number* **)** -> *string$*  
+  >**STRING$(** *number* **,** *length* **)** -> *string$*  
+  >**STRING$(** *number* **,** *length* **,** *base* **)** -> *string$*
   * ### Random Number
-  >**RND(** *range* **)** -> *number*  
-  >**RND(** *minimum* **,** *maximum* **)** -> *number*
+  >**RANDOM(** *range* **)** -> *number*  
+  >**RANDOM(** *minimum* **,** *maximum* **)** -> *number*
   * ### Cosine (angles range from 0 to 1)
   >**COS(** *angle* **)** -> *x*  
   >**COS(** *angle* **,** *radius* **)** -> *x*
@@ -180,19 +184,23 @@
   >**SIN(** *angle* **)** -> *y*  
   >**SIN(** *angle* **,** *radius* **)** -> *y*
   * ### Angle from X and Y (atan)
-  >**ANG(** *x* **,** *y* **)** -> *angle*
+  >**ANGLE(** *x* **,** *y* **)** -> *angle*
   * ### Hypotenuse
-  >**HYP(** *x* **,** *y* **)** -> *hypotenuse*
+  >**HYPOT(** *x* **,** *y* **)** -> *hypotenuse*
   * ### String search (-1 = not found)
-  >**INSTR(** *string$* **,** *search$* **)** -> *location*  
-  >**INSTR(** *start* **,** *string$* **,** *search$* **)** -> *location*
+  >**FIND(** *string$* **,** *search$* **)** -> *location*  
+  >**FIND(** *string$* **,** *search$* **,** *start* **)** -> *location*
   * ### Uppercase
-  >**UCASE$(** *string$* **)** -> *uppercase$*
+  >**UPPER$(** *string$* **)** -> *uppercase$*
   * ### Lowercase
-  >**LCASE$(** *string$* **)** -> *lowercase$*
+  >**LOWER$(** *string$* **)** -> *lowercase$*
   * ### Get characters from end
   >**RIGHT$(** *string$* **,** *length* **)** -> *end$*
   * ### Get number input
   >**INPUT(** **)** -> *number*
   * ### Get string input
   >**INPUT$(** **)** -> *string$*
+  * ### Print a list of values.
+  >**PRINT** [ *value* ] [ , ... ]  
+  > ### Replace 
+  >**REPLACE$**
