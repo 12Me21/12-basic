@@ -1,3 +1,24 @@
+## Order of operations
+
+Group | Operators | Priority
+--- | --- | ---
+Unary | `-` `!` `NOT` `~` | Infinity
+Exponent | `^` | 11
+Multiply/Divide | `*` `/` `%` `\` | 10
+Add/Subtract | `+` `-` | 9
+Bit Shift | `<<` `>>` | 8
+Comparison | `<` `>` `<=` `>=` | 7
+Equality | `==` `!=` | 6
+Bitwise And | `&` | 5
+Bitwise Xor | `~` | 4
+Bitwise Or | `\|` | 3
+Logical And | `AND` | 2
+Logical Xor | `XOR` | 1
+Logical Or | `OR` | 0
+
+
+
+
 ## Operators
 
   * ### Negate
