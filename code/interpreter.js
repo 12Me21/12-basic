@@ -8,9 +8,9 @@ var ip,block,ast,variables=[{TABSTEP:{value:4}}],functions={},ifs,switches;
 var stopped=true,interval;
 var inputs=[];
 
-var steps=100,stepDelay=1,doVsync=false;
+var steps=1000,stepDelay=1,doVsync=false;
 
-function run(astIn,fastMode){
+function run(astIn){
 	ast=astIn;
 	ip=[-1];
 	block=[ast[0]];
@@ -31,6 +31,9 @@ function stepLevel2(){
 function stepLevel1(){
 	for(var i=0;i<steps;i++){
 		step();
+		if(stopped){
+			break;
+		}
 		if(doVsync){
 			doVsync=false;
 			clearInterval(interval);
@@ -40,6 +43,10 @@ function stepLevel1(){
 	}
 }
 
+function currentTimeString(){
+	return new Date().toLocaleString("en-US",{hour:"numeric",minute:"numeric",hour12:true,second:"numeric"})
+}
+
 function stop(error){
 	if(!stopped || interval){
 		stopped=true;
@@ -47,7 +54,7 @@ function stop(error){
 			window.clearInterval(interval);
 			interval=undefined;
 		}
-		print("====================\n");
+		print("==================== ["+currentTimeString()+"]\n");
 		print(error?"ERROR: "+error:"OK")
 		print("\n");
 	}

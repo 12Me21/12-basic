@@ -4,6 +4,7 @@ var builtins=[{
 	PRINT:{any:printList},
 	SET:  {3:arraySet},
 	PUSH: {2:arrayPush}, //any
+	OUTPUT:{any:outputList},
 },{
 	"^":  {2:exponent},
 	"*":  {2:multiply},
@@ -52,19 +53,27 @@ var builtins=[{
 	TRIMEND$:{2:cutright},
 	GET:     {2:arrayGet},
 	POP:     {1:arrayPop},
+	REVERSE$:{1:stringReverse},
+	"REVERSE#":{1:arrayReverse},
+	"SORT#":   {1:sort},
+	MILLISECOND:{0:millisec},
 }];
 
+//don't use
 function expect(x,type){
 	assert(x.type===type,"type mismatch")
 }
 
 function add(a,b){
-	if(a.type==="number"){
-		b.expect("number");
-		return new Value("number",a.value+b.value);
-	}else{
-		a.expect("string");
-		return new Value("string",a.value+b.toString());
+	switch(a.type){
+		case "number":
+			b.expect("number")
+			return new Value("number",a.value+b.value);
+		break;case "string":
+			return new Value("string",a.value+b.value.toString());
+		break;case "array":
+			b.expect("array")
+			return new Value("array",a.value.concat(b.value));
 	}
 }
 
@@ -81,11 +90,18 @@ function negate(a){
 
 function multiply(a,b){
 	b.expect("number");
-	if(a.type==="number"){
-		return new Value("number",a.value*b.value);
-	}else{
-		a.expect("string");
-		return new Value("string",a.value.repeat(b.value));
+	switch(a.type){
+		case "number":
+			return new Value("number",a.value*b.value);
+		break;case "string":
+			assert(b.value>=0,"negative repeat value")
+			return new Value("string",a.value.repeat(b.value));
+		break;case "array":
+			assert(b.value>=0,"negative repeat value")
+			var result=[]
+			for(i=0;i<b.value;i++)
+				result=result.concat(a.value);
+			return new Value("array",result);
 	}
 }
 

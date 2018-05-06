@@ -322,8 +322,10 @@ function parse(nextToken){
 					return 3;
 				case "AND":
 					return 2;
-				case "OR":
+				case "XOR":
 					return 1;
+				case "OR":
+					return 0;
 			}
 		console.log(token);
 		assert(false,"error prec "+token.name);
@@ -416,11 +418,11 @@ function parse(nextToken){
 				readExpression2();
 				assert(readToken(")"),"Missing \")\"");
 				expr.push({type:")"});
-			break;case "[":
+			break;case "{":case "[":
 				expr.push({type:"("});
 				var x=readList2(readExpression2);
 				expr.push({type:"array",args:x.length});
-				assert(readToken("]"),"Missing \"]\"");
+				assert(readToken("}")||readToken("]"),"Missing \"]\"");
 				expr.push({type:")"});
 				
 			//other crap
@@ -471,17 +473,8 @@ function parse(nextToken){
 	//name: [variable name expr token list]
 	//indexes: [index list]
 	function readVariable(){
-		var ret={name:""};
 		next();
 		return {name:word}
-		switch(type){
-			case "word":
-				ret.name=word;
-			break;default:
-				readNext=0;
-				return false;
-		}
-		return ret;
 	}
 	
 	//throw error with message if condition is false

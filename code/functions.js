@@ -78,7 +78,6 @@ function replace(a,b,c){
 }
 
 function printList(list){
-	
 	var printString="";
 	for(var i=0;i<list.length;i++){
 		printString+=(i>0?" ":"")+list[i].toString();
@@ -86,9 +85,54 @@ function printList(list){
 	print(printString+"\n");
 }
 
+function outputList(list){
+	var printString="";
+	for(var i=0;i<list.length;i++){
+		printString+=(i>0?" ":"")+list[i].toString();
+	}
+	print(printString);
+}
+
 function length(a){
 	assert(a.type==="string"||a.type==="array","type mismatch")
 	return new Value("number",a.value.length);
+}
+
+function stringReverse(a){
+	a.expect("string")
+	return new Value("string",a.value.split("").reverse().join(""));
+}
+
+function arrayReverse(a){
+	a.expect("array")
+	return new Value("array",a.value.reverse());
+}
+
+function sort(a){
+	a.expect("array");
+	if(a.value.length==0)
+		return new Value("array",[]);
+	var type=a.value[0].type
+	assert(type==="number"||type==="string","type mismatch");
+	for(var i=0;i<a.value.length;i++){
+		a.value[i].expect(type);
+	}
+	return new Value("array",a.value.sort(sortCompare));
+}
+
+function millisec(){
+	return new Value("number",Date.now());	
+}
+
+function sortCompare(a, b) {
+  if (a<b) {
+    return -1;
+  }
+  if (a>b) {
+    return 1;
+  }
+  // a must be equal to b (WRONG)
+  return 0;
 }
 
 function ascii(a){

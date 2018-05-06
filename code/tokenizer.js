@@ -3,7 +3,7 @@ var lineNumber;
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
 var KEYWORDS=["ENDSWITCH","SWITCH","CASE","BREAK","CALL","CONTINUE","DEF","ELSE","ELSEIF","ENDIF","FOR","IF","NEXT","OUT","REPEAT","RETURN","STOP","SWAP","THEN","UNTIL","VAR","WEND","WHILE","DO","LOOP"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":0.164}
+var constants={"#PI":Math.PI,"#VERSION":0.181}
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number
@@ -190,7 +190,7 @@ function tokenize(code){
 			next();
 			return push("linebreak");
 		//characters
-		break;case '(':case ')':case '[':case ']':case ',':case ':':
+		break;case '(':case ')':case '[':case ']':case '{':case '}':case ',':case ':':
 			var chr=c;
 			next();
 			return push(chr);

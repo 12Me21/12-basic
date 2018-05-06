@@ -1,3 +1,5 @@
+debug=false;
+
 function Value(type,value){
 	assert(type==="number"||type==="string"||type==="array","invalid type when creating value");
 	this.type=type;
@@ -20,7 +22,7 @@ Value.prototype.toString=function(base){
 		case "string":
 			return this.value;
 		case "array":
-			return "["+this.value.join(",")+"]";
+			return "{"+this.value.join(",")+"}";
 		default:
 			assert(false,"invalid type");
 	}
@@ -61,4 +63,5 @@ function defaultValue(type){
 	}
 }
 
-//console.log=function(){} //go to hell
+var oldLog=console.log;
+console.log=function(a,b,c,d,e,f){if(debug){oldLog(a,b,c,d,e,f)}} //go to hell
