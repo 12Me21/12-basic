@@ -1,0 +1,180 @@
+CODE$=INPUT$()
+'I=@+1
+STRICT=TRUE
+STACK#={}
+CALLSTACK#={}
+DO
+	CHAR$=CODE$.MID$(I)I=I+1
+	SWITCH CHAR$
+		CASE "["
+			VALUE=0
+			SIGN=1
+			DO
+				CHAR$=CODE$.MID$(I)I=I+1
+				SWITCH CHAR$
+					CASE "]"
+						IF !DONOTHING THEN PUSH STACK#,VALUE*SIGN
+						BREAK
+					CASE "["
+						IF VALUE==0 THEN SIGN=-1
+						VALUE=VALUE*10
+					CASE "="
+						VALUE=VALUE+1
+					CASE ""
+						PRINT "ERROR: UNTERMINATED NUMBER LITERAL"
+						IF STRICT THEN STOP
+				ENDSWITCH
+			LOOP
+		CASE "="
+			START=I-1
+			OPERATION$=""
+			DO
+				CHAR$=CODE$.MID$(I)I=I+1
+				SWITCH CHAR$
+					CASE "="
+						SWITCH OPERATION$
+							CASE "" 'end loop
+								IF DONOTHING THEN
+									LEVEL=LEVEL-1
+									IF LEVEL==0 THEN
+										DONOTHING=FALSE
+									ENDIF
+								ELSE
+									I=(CALLSTACK# OR {0}).POP()
+								ENDIF
+							CASE "]" 'break if 0
+								IF NOT DONOTHING THEN
+									IF NOT (STACK# OR {0}).GET((STACK# OR {0}).LENGTH()-1) THEN
+										DONOTHING=TRUE
+										LEVEL=1
+									ENDIF
+								ENDIF
+							CASE "[" 'loop forever
+								IF DONOTHING THEN
+									LEVEL=LEVEL+1
+								ELSE
+									PUSH CALLSTACK#,START
+								ENDIF
+							CASE "][" 'function def
+								IF DONOTHING THEN
+									LEVEL=LEVEL+1
+								ELSE
+									PUSH STACK#,I
+									DONOTHING=TRUE
+									LEVEL=1
+								ENDIF
+							CASE "[]" 'function call
+								IF !DONOTHING THEN
+									PUSH CALLSTACK#,I
+									I=(STACK# OR {0}).POP()
+								ENDIF
+							CASE "]]" 'while (no pop)
+								IF DONOTHING THEN
+									LEVEL=LEVEL+1
+								ELSE
+									IF (STACK# OR {0}).GET((STACK# OR {0}).LENGTH()-1) THEN
+										PUSH CALLSTACK#,START
+									ELSE
+										DONOTHING=TRUE
+										LEVEL=1
+									ENDIF
+								ENDIF
+							ELSE
+								PRINT "ERROR: UNDEFINED LOOP ",OPERATION$
+								IF STRICT THEN STOP
+						ENDSWITCH
+						BREAK
+					CASE "]"
+						OPERATION$=OPERATION$+"]"
+					CASE "["
+						OPERATION$=OPERATION$+"["
+					CASE ""
+						PRINT "ERROR: UNTERMINATED LOOP OPERATOR"
+						IF STRICT THEN STOP
+				ENDSWITCH
+			LOOP
+		CASE "]"
+			OPERATION$=""
+			DO
+				CHAR$=CODE$.MID$(I)I=I+1
+				SWITCH CHAR$
+					CASE "["
+						IF !DONOTHING THEN 	
+							SWITCH OPERATION$
+								CASE "" 'print num
+									PRINT STACK#.POP()
+								CASE "=" 'print char
+									OUTPUT STACK#.POP().CHR$()
+								CASE "]" 'swap
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A
+									PUSH STACK#,B
+								CASE "==" 'compare
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A==B 'maybe do sign subtract?
+								CASE "=]" 'add
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A+B
+								CASE "]=" 'remove
+									A=(STACK# OR {0}).POP()
+								CASE "]]" 'dup
+									A=(STACK# OR {0}).POP()
+									PUSH STACK#,A
+									PUSH STACK#,A
+								CASE "==]" 'input chars
+									A$=INPUT$()
+									FOR J=0 TO A$.LENGTH()-1
+										PUSH STACK#.ASC()
+									NEXT
+								CASE "=]]" 'multiply
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A*B
+								CASE "===" 'subtract
+										A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A-B
+								CASE "=]=" 'divide
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A/B
+								CASE "]=]" 'mod
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									PUSH STACK#,A%B
+								CASE "]==" 'input number
+									PUSH STACK#,INPUT()
+								CASE "]]=" 'rotate
+									A=(STACK# OR {0}).POP()
+									B=(STACK# OR {0}).POP()
+									C=(STACK# OR {0}).POP()
+									PUSH STACK#,B
+									PUSH STACK#,A
+									PUSH STACK#,C
+								CASE "]]]" 'pick
+									A=(STACK# OR {0}).POP()
+									IF A>=STACK#.LENGTH() THEN
+										PUSH STACK#,STACK#[STACK#.LENGTH()-A-1]
+									ENDIF
+								ELSE
+									PRINT "ERROR: UNDEFINED OPERATION",OPERATION$
+									IF STRICT THEN STOP
+							ENDSWITCH
+						ENDIF
+						BREAK
+					CASE "]"
+						OPERATION$=OPERATION$+"]"
+					CASE "="
+						OPERATION$=OPERATION$+"="
+					CASE ""
+						PRINT "ERROR: UNTERMINATED OPERATOR"
+						IF STRICT THEN STOP
+				ENDSWITCH
+			LOOP
+		CASE ""
+			BREAK
+	ENDSWITCH
+LOOP
