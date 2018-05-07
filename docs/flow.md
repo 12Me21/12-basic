@@ -11,7 +11,7 @@
   >&nbsp;&nbsp;&nbsp;&nbsp;*code* ]  
   >**ENDIF**  
   
-* ### Short IF block (ELSE/ELSEIF not allowed)
+* ### Single line IF block (ELSE/ELSEIF not allowed)
   >**IF** *condition* **THEN** *code*
 
 * ### Infinite loop
