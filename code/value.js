@@ -63,5 +63,5 @@ function defaultValue(type){
 	}
 }
 
-var oldLog=console.log;
-console.log=function(a,b,c,d,e,f){if(debug){oldLog(a,b,c,d,e,f)}} //go to hell
+//var oldLog=console.log;
+//console.log=function(a,b,c,d,e,f){if(debug){oldLog(a,b,c,d,e,f)}} //go to hell

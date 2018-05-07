@@ -10,7 +10,7 @@
 //callback: output function
 function parse(nextToken){
 	//current token
-	var type,word; //NOTE: word is only update right after next()ing. don't rely on it laaaaater
+	var type,word;
 	//stored tokens
 	var newType,newWord;
 	//keep track of stored tokens
@@ -22,36 +22,41 @@ function parse(nextToken){
 	var current={};
 	var currentBlocks=[];
 	
+	//enter code block
 	function startBlock(){
 		current.code=[];
 		current.line=lineNumber;
 		currentBlocks.push(current);
 		current={};
 	}
+	//leave code block
 	function endBlock(){
 		var block=currentBlocks.pop();
 		currentBlocks[currentBlocks.length-1].code.push(block);
 	}
+	//leave code block + create function
 	function endDef(){
 		var block=currentBlocks.pop();
 		defs[block.name]=block;
 	}
 	
+	//control single line IF statement
 	var ifThisLine=false,codeAfterThen;
-	//var nextFunctionGetsOneMore=0;
+	
 	var expr=[];
 	
 	current.type="main";
 	startBlock();
 	
+	//main
 	do{
 		try{
 			readStatement();
 		}catch(error){
-			if(error.name==="ParseError"){
+			if(error.name==="ParseError")
 				return error.message+" on line "+lineNumber;
 			//bad error!!!
-			}else{
+			else{
 				throw error;
 				return;
 			}
@@ -64,52 +69,61 @@ function parse(nextToken){
 		if(type!="comment" && ifThisLine && type!="linebreak")
 			codeAfterThen=true;
 		switch(type){
-			//keywords with no arguments
+			//BREAK [levels]
 			case "BREAK":
 				current.type="BREAK";
 				current.levels=readExpression();
+			//CONTINUE
 			break;case "CONTINUE":
 				current.type="CONTINUE";
-				current.levels=readExpression();
+			//ELSE (used in IF and SWITCH)
 			break;case "ELSE":
 				var currentType=currentBlock().type
+				//SWITCH
 				if(currentType==="CASE"){
+					//end previous CASE
 					endBlock();
+					//start new CASE
 					current.type="CASE";
 					startBlock();
+				//IF
 				}else{
 					assert(currentBlock().type==="IF"||currentBlock().type==="ELSEIF","ELSE without IF");
+					//end previous IF/ELSEIF section
 					endBlock();
+					//start ELSE section
 					current.type="ELSE";
 					startBlock();
 				}
+			//END SWITCH
 			break;case "ENDSWITCH":
-				var currentType=currentBlock().type
-				if(currentType==="CASE")
-					endBlock();
-				else
-					assert(currentType==="SWITCH","ENDSW without SWITCH");
+				assert(currentBlock().type==="CASE","ENDSWITCH without SWITCH/CASE");
 				endBlock();
+				endBlock();
+			//ENDIF
 			break;case "ENDIF":
 				var currentType=currentBlock().type
-				assert(currentType==="IF" || currentType==="ELSE" || currentType==="ELSEIF","ENDIF without IF");
+				assert(currentType==="IF" || currentType==="ELSEIF" || currentType==="ELSE","ENDIF without IF");
 				endBlock();
 				ifThisLine=false;
+			//SWITCH
 			break;case "SWITCH":
 				current.type="SWITCH"
 				assert(current.condition=readExpression(),"Missing argument to keyword");
 				startBlock();
+			//CASE
 			break;case "CASE":
 				var currentType=currentBlock().type
 				if(currentType==="CASE")
+					//end previous case (no break required!)
 					endBlock();
 				else
+					//This is if it's the first CASE after SWITCH
 					assert(currentType==="SWITCH","invalid CASE");
+				//start block
 				current.type="CASE"
 				assert(current.conditions=readList(readExpression),"Missing argument to keyword");
 				startBlock();
-			break;case "STOP":
-				current.type="STOP";
 			break;case "REPEAT":
 				current.type="REPEAT";
 				startBlock();
@@ -232,18 +246,6 @@ function parse(nextToken){
 		word=prevWord;
 		return newType===wantedType;
 	}
-	//check if next token is of a specific type
-	function peekWord(wantedWord){
-		var prevType=type,prevWord=word;
-		next();
-		readNext=-1;
-		newType=type;
-		newWord=word;
-		type=prevType;
-		word=prevWord;
-		return newType==="word" && newWord.trimLeft().toUpperCase()===wantedWord;
-	}
-	
 	//Try to read a specific token
 	function readToken(wantedType){
 		next();
@@ -340,7 +342,7 @@ function parse(nextToken){
 		for(var i=0;i<expr.length;i++){
 			var token=expr[i];
 			switch(token.type){
-				case "number":case "string":case "variable":case "function":case "array": //see, functions are actually pushed AFTER their arguments, so we can just send them directly to the output! :D
+				case "number":case "string":case "variable":case "function":case "array":case "index": //see, functions are actually pushed AFTER their arguments, so we can just send them directly to the output! :D
 					rpn.push(token);
 				break;case "operator":case "unary":
 					while(stack.length){
@@ -430,18 +432,26 @@ function parse(nextToken){
 				readNext=0;
 				return false;
 		}
-		while(readToken("dot")){
-			assert(readToken("word"),"Dot missing function");
-			var name=word;
-			assert(readToken("("),"Dot missing function");
-			expr.push({type:"("}); //all we needed!
-			var x=readList2(readExpression2);
-			assert(readToken(")"),"Missing \")\" in function call");
-			expr.push({type:")"});
-			expr.push({type:"function",name:name,args:x.length+1});
-		}
-		//read infix operators
-		//this might have to be WHILE not IF
+		//read [index] and .function
+		while(1)
+			if(readToken("[")){
+				expr.push({type:"("});
+				assert(readExpression2(),"Missing index");
+				assert(readToken("]"),"Missing \"]\"");
+				expr.push({type:")"});
+				expr.push({type:"index",args:"2"});
+			}else if(readToken("dot")){
+				assert(readToken("word"),"Dot missing function");
+				var name=word;
+				assert(readToken("("),"Dot missing function");
+				expr.push({type:"("}); //all we needed!
+				var x=readList2(readExpression2);
+				assert(readToken(")"),"Missing \")\" in function call");
+				expr.push({type:")"});
+				expr.push({type:"function",name:name,args:x.length+1});
+			}else
+				break
+		//read infix operator + expression
 		if(readToken("operator")||readToken("minus")||readToken("xor")){
 			expr.push({type:"operator",name:word,args:2});
 			assert(readExpression2(),"Operator missing second argument");

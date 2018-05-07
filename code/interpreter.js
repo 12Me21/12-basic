@@ -80,7 +80,7 @@ function current(stack){
 }
 
 function callFunction(name,args){
-	console.log(name,args)
+	//console.log(name,args)
 	assert(builtins[1][name],"Undefined function: \""+name+"\"")
 	if(builtins[1][name][args.length]){
 		return builtins[1][name][args.length].apply(null,args);
@@ -112,9 +112,10 @@ function callSub(name,args2){
 
 function expr(n){
 	assert(n.constructor===Array,"internal error: invalid expression");
-	console.log("expression",n);
+	//console.log("expression",n);
 	var stack=[];
 	for(var i=0;i<n.length;i++){
+		//console.log("stack",{...stack})
 		switch(n[i].type){
 			case "variable":
 				stack.push(getVar(n[i].name));
@@ -122,9 +123,17 @@ function expr(n){
 				stack.push(new Value("number",n[i].value));
 			break;case "string":
 				stack.push(new Value("string",n[i].value));
+			break;case "index":
+				var index=stack.pop();
+				var args=n[i].args;
+				var array=stack.pop();
+				index.expect("number");
+				index=index.value;
+				assert(index>=0 && index<array.value.length,"array access out of range");
+				stack.push(array.value[Math.floor(index)]);
 			break;case "operator":case "function":case "unary":
 				var args=n[i].args;
-				console.log(args)
+				//console.log(args)
 				assert(args<=stack.length,"internal error: stack underflow");
 				var retval;
 				assert(retval=callFunction(n[i].name,args?stack.slice(-args):[]),"bad function/operator")
@@ -137,7 +146,7 @@ function expr(n){
 				for(var j=0;j<args;j++)
 					stack.pop();
 				stack.push(array);
-				console.log("stka",{...stack});
+				//console.log("stka",{...stack});
 			break;default:
 				assert(false,"invalid expression: bad token "+n[i].type);
 		}
@@ -276,9 +285,6 @@ function step(){
 				}
 				leaveBlock();
 			}
-		break;case "STOP":
-			stop();
-			return;
 		break;case "function":
 			callSub(now.name,now.inputs);
 			//assert(false,"Tried to call function \""+now.name+"\". Subroutine-type functions are not supported yet");

@@ -17,7 +17,7 @@ function arrayGet(a,b){
 	a.expect("array");
 	b.expect("number");
 	assert(b.value>=0 && b.value<a.value.length,"out of bounds");
-	var x=a.value[b.value];
+	var x=a.value[Math.floor(b.value)];
 	return x.copy();
 }
 
@@ -133,6 +133,10 @@ function sortCompare(a, b) {
   }
   // a must be equal to b (WRONG)
   return 0;
+}
+
+function endProgram(){
+	
 }
 
 function ascii(a){

@@ -1,3 +1,4 @@
+//array remove: start,[length]
 var builtins=[{
 	CLS:  {0:clearScreen},
 	VSYNC:{0:vsync},
@@ -5,6 +6,7 @@ var builtins=[{
 	SET:  {3:arraySet},
 	PUSH: {2:arrayPush}, //any
 	OUTPUT:{any:outputList},
+	STOP:{0:stop},
 },{
 	"^":  {2:exponent},
 	"*":  {2:multiply},
