@@ -4,6 +4,7 @@
 * User defined functions
 * User defined Constants
 * Some nice FOR loop variants (`FOR [ index , ] value IN list` or maybe just `FOR index IN list`)
+* Structs/user defined types/tables/objects/dictionaries/whatever you want to call them. Will use `@` type suffix, and literals are written as **{** *key* [ **=** *value* ] [ , ... ] **}**. `{X=1,Z=3} + {X=2,Y=1} -> {X=2,Y=1,Z=3}`
 
 ## Maybe
 
