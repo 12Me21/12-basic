@@ -1,6 +1,7 @@
 # Planned Features
 
-* Array access syntax (`ARRAY[INDEX]`)
+* ~~Array access syntax (`ARRAY[INDEX]`)~~
+* Array/struct access in assignment (`ARRAY[INDEX]=VALUE`,`STRUCT.FIELD=VALUE`)
 * User defined functions
 * User defined Constants
 * Some nice FOR loop variants (`FOR [ index , ] value IN list` or maybe just `FOR index IN list`)
