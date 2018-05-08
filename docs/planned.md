@@ -14,3 +14,4 @@
 * Better syntax for subroutine functions (`ARRAY#.PUSH VALUE`)?
 * Maybe just make everything an expression...
 * Maybe support WHILE...ELSE and FOR...ELSE, where the ELSE code runs if the loop doesn't run (but what END keyword would be used?)
+* Keyword to access left value in assignment. For example `ARRAY[INDEX] = ITSELF + 1`.
