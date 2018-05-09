@@ -8,6 +8,9 @@
 //tokens->ast
 //nextToken: function that returns the next token
 //callback: output function
+
+var vtop=0;
+
 function parse(nextToken){
 	//current token
 	var type,word;
@@ -16,11 +19,11 @@ function parse(nextToken){
 	//keep track of stored tokens
 	var readNext=1;
 	//false=not, 1=no paren, 2=()
-	var defType=false,nextDefCommon=false,defs={};
+	var defs={};
 	
-	var blocks=[];
 	var current={};
 	var currentBlocks=[];
+	var variables=[{}];
 	
 	//enter code block
 	function startBlock(){
@@ -58,7 +61,6 @@ function parse(nextToken){
 			//bad error!!!
 			else{
 				throw error;
-				return;
 			}
 		}
 	}while(type!=="eof");;;
@@ -69,16 +71,52 @@ function parse(nextToken){
 		if(type!="comment" && ifThisLine && type!="linebreak")
 			codeAfterThen=true;
 		switch(type){
-			//BREAK [levels]
-			case "BREAK":
-				current.type="BREAK";
-				current.levels=readExpression();
-			//CONTINUE
-			break;case "CONTINUE":
-				current.type="CONTINUE";
-			//ELSE (used in IF and SWITCH)
+			//SWITCH/CASE/ENDSWITCH
+			case "SWITCH":
+				current.type="SWITCH";
+				assert(current.condition=readExpression(),"Missing argument to keyword");
+				startBlock();
+			break;case "CASE":
+				var currentType=currentBlock().type;
+				if(currentType==="CASE")
+					//end previous case (no break required!)
+					endBlock();
+				else
+					//This is if it's the first CASE after SWITCH
+					assert(currentType==="SWITCH","invalid CASE");
+				//start block
+				current.type="CASE";
+				assert(current.conditions=readList(readExpression),"Missing argument to keyword");
+				startBlock();
+			break;case "ENDSWITCH":
+				assert(currentBlock().type==="CASE","ENDSWITCH without SWITCH/CASE");
+				endBlock();
+				endBlock();
+			//REPEAT/UNTIL
+			break;case "REPEAT":
+				current.type="REPEAT";
+				startBlock();
+			break;case "UNTIL":
+				assert(currentBlock().type=="REPEAT","UNTIL without REPEAT");
+				assert(currentBlock().condition=readExpression(),"Missing UNTIL condition");
+				endBlock();
+			//IF/ELSEIF/ELSE/ENDIF
+			break;case "IF":
+				current.type="IF";
+				assert(current.condition=readExpression(),"Missing IF condition");
+				assert(readToken("THEN"),"IF without THEN");
+				startBlock();
+				ifThisLine=true;
+				codeAfterThen=false;
+			break;case "ELSEIF":
+				assert(currentBlock().type=="IF"||currentBlock().type=="ELSEIF","ELSEIF without IF");
+				endBlock();
+				current.type="ELSEIF";
+				current.condition=readExpression();
+				assert(readToken("THEN"),"ELSEIF without THEN");
+				startBlock();
 			break;case "ELSE":
-				var currentType=currentBlock().type
+				var currentType=currentBlock().type;
 				//SWITCH
 				if(currentType==="CASE"){
 					//end previous CASE
@@ -95,60 +133,12 @@ function parse(nextToken){
 					current.type="ELSE";
 					startBlock();
 				}
-			//END SWITCH
-			break;case "ENDSWITCH":
-				assert(currentBlock().type==="CASE","ENDSWITCH without SWITCH/CASE");
-				endBlock();
-				endBlock();
-			//ENDIF
 			break;case "ENDIF":
-				var currentType=currentBlock().type
+				var currentType=currentBlock().type;
 				assert(currentType==="IF" || currentType==="ELSEIF" || currentType==="ELSE","ENDIF without IF");
 				endBlock();
 				ifThisLine=false;
-			//SWITCH
-			break;case "SWITCH":
-				current.type="SWITCH"
-				assert(current.condition=readExpression(),"Missing argument to keyword");
-				startBlock();
-			//CASE
-			break;case "CASE":
-				var currentType=currentBlock().type
-				if(currentType==="CASE")
-					//end previous case (no break required!)
-					endBlock();
-				else
-					//This is if it's the first CASE after SWITCH
-					assert(currentType==="SWITCH","invalid CASE");
-				//start block
-				current.type="CASE"
-				assert(current.conditions=readList(readExpression),"Missing argument to keyword");
-				startBlock();
-			break;case "REPEAT":
-				current.type="REPEAT";
-				startBlock();
-			//SWAP
-			break;case "SWAP":
-				current.type="SWAP";
-				assert(current.variable=readVariable(),"Missing variable in SWAP");
-				assert(readToken(","),"Missing comma in SWAP");
-				assert(current.variable2=readVariable(),"Missing variable in SWAP");
-			//IF, ELSEIF
-			break;case "ELSEIF":
-				assert(currentBlock().type=="IF"||currentBlock().type=="ELSEIF","ELSEIF without IF");
-				endBlock();
-				current.type="ELSEIF"
-				current.condition=readExpression();
-				assert(readToken("THEN"),"ELSEIF without THEN");
-				startBlock();
-			break;case "IF":
-				current.type="IF"
-				assert(current.condition=readExpression(),"Missing IF condition");
-				assert(readToken("THEN"),"IF without THEN");
-				startBlock();
-				ifThisLine=true;
-				codeAfterThen=false;
-			//FOR
+			//FOR/NEXT
 			break;case "FOR":
 				current.type="FOR";
 				assert(current.variable=readVariable(),"Missing FOR variable");
@@ -161,9 +151,13 @@ function parse(nextToken){
 				else
 					readNext=0; //heck
 				startBlock();
-			//WHILE <condition>
+			break;case "NEXT":
+				assert(currentBlock().type=="FOR","NEXT without FOR");
+				readExpression();
+				endBlock();
+			//WHILE/WEND
 			break;case "WHILE":
-				current.type="WHILE"
+				current.type="WHILE";
 				assert(current.condition=readExpression(),"Missing argument to keyword");
 				startBlock();
 			break;case "WEND":
@@ -171,36 +165,52 @@ function parse(nextToken){
 				endBlock();
 			//do/LOOP
 			break;case "DO":
-				current.type="DO"
+				current.type="DO";
 				startBlock();
 			break;case "LOOP":
 				assert(currentBlock().type=="DO","LOOP without DO");
 				endBlock();
-			//UNTIL <condition>
-			break;case "UNTIL":
-				assert(currentBlock().type=="REPEAT","UNTIL without REPEAT");
-				assert(currentBlock().condition=readExpression(),"Missing UNTIL condition");
-				endBlock();
-			//NEXT
-			break;case "NEXT":
-				assert(currentBlock().type=="FOR","NEXT without FOR");
-				readExpression();
-				endBlock();
+			//BREAK/CONTINUE
+			break;case "BREAK":
+				current.type="BREAK";
+				current.levels=readExpression();
+			break;case "CONTINUE":
+				current.type="CONTINUE";
+			//SWAP
+			break;case "SWAP":
+				current.type="SWAP";
+				assert(current.variable=readVariable(),"Missing variable in SWAP");
+				assert(readToken(","),"Missing comma in SWAP");
+				assert(current.variable2=readVariable(),"Missing variable in SWAP");
+			//FUNC/ENDFUNC/RETURN
+			break;case "FUNC":
+				current.type="FUNC";
+				assert(readToken("word"),"missing function name");
+				current.name=word;
+				current.inputs=readList(readDeclaration);
+				startBlock();
+			break;case "ENDFUNC":
+				assert(currentBlock().type==="FUNC","aaaa");
+				endDef();
+			break;case "RETURN":
+				current.type="RETURN";
+				current.value=readExpression();
 			//OUT/THEN
 			break;case "OUT":case "THEN":
 				assert(false,"Illegal OUT/THEN");
 			//other words
 			break;case "word":
-				//var name=text;
-				readNext=readNext-1;
-				var x=readVariable(true);
+				//var name=word;
+				var varName=readVariable(true);
 				if(readToken("=")){
+					var x=(variables[vtop][varName.name] || (variables[vtop][varName.name]=new Value(typeFromName(varName.name))));
 					current.type="assignment";
 					current.variable=x;
+					current.indexes=varName.indexes;
 					assert(current.value=readExpression(),"Missing value in assignment");
 				}else{
 					current.type="function";
-					current.name=x.name;
+					current.name=varName.name;
 					current.inputs=readList(readExpression);
 					if(readToken("OUT"))
 						current.outputs=readList(readVariable);
@@ -226,26 +236,45 @@ function parse(nextToken){
 		}
 		if(current.type){
 			current.line=lineNumber;
-			currentBlocks[currentBlocks.length-1].code.push(current)//push to current block!
-			current={}
+			currentBlocks[currentBlocks.length-1].code.push(current);//push to current block!
+			current={};
 		}
 	}
 	
-	function currentBlock(){
-		return currentBlocks[currentBlocks.length-1]
+	function readDeclaration(){
+		if(readToken("word")){
+			var x=(variables[vtop][word] || (variables[vtop][word]=new Value(typeFromName(word))));
+			return x;
+		}else
+			return false;
 	}
 	
-	//check if next token is of a specific type
-	function peekToken(wantedType){
-		var prevType=type,prevWord=word;
-		next();
-		readNext=-1;
-		newType=type;
-		newWord=word;
-		type=prevType;
-		word=prevWord;
-		return newType===wantedType;
+	//keys:
+	//name: [variable name expr token list]
+	//indexes: [index list]
+	function readVariable(alreadyRead){
+		if(!alreadyRead)
+			next();
+		var name=word;
+		if(!alreadyRead)
+			var variable=(variables[vtop][name] || (variables[vtop][name]=new Value(typeFromName(name))));
+		var indexes=[];
+		while(1){
+			if(readToken("[")){
+				indexes.push(readExpression());
+				assert(readToken("]"),"missing ]");
+			}else
+				break;
+		}
+		if(indexes.length===0)
+			indexes=undefined;
+		return {name:name,indexes:indexes,variable:variable};
 	}
+	
+	function currentBlock(){
+		return currentBlocks[currentBlocks.length-1];
+	}
+	
 	//Try to read a specific token
 	function readToken(wantedType){
 		next();
@@ -329,15 +358,13 @@ function parse(nextToken){
 				case "OR":
 					return 0;
 			}
-		console.log(token);
 		assert(false,"error prec "+token.name);
 	}
 	function left(token){
-		return 0
+		return 0;
 	}
 	
 	function rpnFromExpr(expr){
-		console.log({...expr},"expr");
 		var rpn=[],stack=[];
 		for(var i=0;i<expr.length;i++){
 			var token=expr[i];
@@ -346,8 +373,7 @@ function parse(nextToken){
 					rpn.push(token);
 				break;case "operator":case "unary":
 					while(stack.length){
-						var top=stack[stack.length-1]
-						//console.log(top)
+						var top=stack[stack.length-1];
 						if(top.type!="("&&(prec(top)>=prec(token) || (prec(top)==prec(token) && left(token)))){
 							rpn.push(stack.pop());
 						}else{
@@ -357,9 +383,7 @@ function parse(nextToken){
 					stack.push(token);
 				break;case "comma":
 					while(stack.length){
-						var top=stack[stack.length-1]
-						//console.log(top)
-						if(top.type!="("){
+						if(stack[stack.length-1].type!="("){
 							rpn.push(stack.pop());
 						}else{
 							break;
@@ -369,7 +393,7 @@ function parse(nextToken){
 					stack.push(token);
 				break;case ")":
 					while(1){
-						var top=stack[stack.length-1]
+						var top=stack[stack.length-1];
 						if(top.type!="(")
 							rpn.push(stack.pop());
 						else
@@ -377,7 +401,7 @@ function parse(nextToken){
 					}
 					stack.pop();
 				break;default:
-				assert(false,"error typ "+token.type)
+				assert(false,"error typ "+token.type);
 			}
 		}
 		while(stack.length)
@@ -386,7 +410,6 @@ function parse(nextToken){
 	}
 	
 	function readExpression2(){
-		var ret=false;
 		next();
 		switch(type){
 			//function or variable
@@ -398,8 +421,10 @@ function parse(nextToken){
 					assert(readToken(")"),"Missing \")\" in function call");
 					expr.push({type:")"});
 					expr.push({type:"function",name:name,args:x.length});
-				}else
-					expr.push({type:"variable",name:name});
+				}else{
+					var x=(variables[vtop][name] || (variables[vtop][name]=new Value(typeFromName(name))));
+					expr.push({type:"variable",variable:x});
+				}
 			//number literals
 			break;case "number":
 				expr.push({type:"number",value:word});
@@ -420,13 +445,13 @@ function parse(nextToken){
 				readExpression2();
 				assert(readToken(")"),"Missing \")\"");
 				expr.push({type:")"});
-			break;case "{":case "[":
+			break;case "[": //case "{":
 				expr.push({type:"("});
 				var x=readList2(readExpression2);
-				expr.push({type:"array",args:x.length});
+				
 				assert(readToken("}")||readToken("]"),"Missing \"]\"");
 				expr.push({type:")"});
-				
+				expr.push({type:"array",args:x.length});
 			//other crap
 			break;default:
 				readNext=0;
@@ -450,41 +475,13 @@ function parse(nextToken){
 				expr.push({type:")"});
 				expr.push({type:"function",name:name,args:x.length+1});
 			}else
-				break
+				break;
 		//read infix operator + expression
 		if(readToken("operator")||readToken("minus")||readToken("xor")){
 			expr.push({type:"operator",name:word,args:2});
 			assert(readExpression2(),"Operator missing second argument");
 		}
 		return true;
-	}
-	
-	//read function definition argument
-	function readArgument(){
-		if(readToken("word"))
-			return word;
-		else
-			return false;
-	}
-	
-	//read variable declaration
-	function readDeclaration(){
-		var ret={};
-		if(readToken("word")){
-			ret.name=word;
-			if(readToken("="))
-				ret.value=readExpression();
-			return ret;
-		}
-		return false;
-	}
-	
-	//keys:
-	//name: [variable name expr token list]
-	//indexes: [index list]
-	function readVariable(){
-		next();
-		return {name:word}
 	}
 	
 	//throw error with message if condition is false
@@ -524,8 +521,7 @@ function parse(nextToken){
 		}
 	}
 	
-	if(currentBlocks.length>=2)
+	if(currentBlocks.length>1)
 		return "Unclosed "+currentBlocks[1].type;
-	//currentBlocks[1]=defs;
-	return currentBlocks;
+	return [currentBlocks[0],variables,defs];
 }

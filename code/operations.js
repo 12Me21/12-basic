@@ -59,22 +59,19 @@ var builtins=[{
 	"REVERSE#":{1:arrayReverse},
 	"SORT#":   {1:sort},
 	MILLISECOND:{0:millisec},
+	//ARRAY:{2:filledArray},
+	ABS:{1:absoluteValue},
 }];
-
-//don't use
-function expect(x,type){
-	assert(x.type===type,"type mismatch")
-}
 
 function add(a,b){
 	switch(a.type){
 		case "number":
-			b.expect("number")
+			b.expect("number");
 			return new Value("number",a.value+b.value);
 		break;case "string":
 			return new Value("string",a.value+b.value.toString());
 		break;case "array":
-			b.expect("array")
+			b.expect("array");
 			return new Value("array",a.value.concat(b.value));
 	}
 }
@@ -96,13 +93,13 @@ function multiply(a,b){
 		case "number":
 			return new Value("number",a.value*b.value);
 		break;case "string":
-			assert(b.value>=0,"negative repeat value")
+			assert(b.value>=0,"negative repeat value");
 			return new Value("string",a.value.repeat(b.value));
 		break;case "array":
-			assert(b.value>=0,"negative repeat value")
-			var result=[]
-			for(i=0;i<b.value;i++)
-				result=result.concat(a.value);
+			assert(b.value>=0,"negative repeat value");
+			var result=[];
+			for(var i=0;i<b.value;i++)
+				result=result.concat(a.copy().value); //yeah copy that shit
 			return new Value("array",result);
 	}
 }
@@ -130,39 +127,58 @@ function mod(a,b){
 	return new Value("number",a.value-Math.floor(a.value/b.value)*b.value);
 }
 
-function comparison(a,b,compareFunction){
-	assert(a.type===b.type,"type mismatch");
-	return new Value("number",compareFunction(a.value,b.value)?1:0);
-}
-
 function greaterThan(a,b){
-	return comparison(a,b,function(a,b){return a>b});
+	a.expect(b.type);
+	switch(b.type){
+		case "number":case "string":
+			return new Value("number",a.value>b.value?1:0);
+		break;case "array":
+			return new Value("number",a.value.length>b.value.length?1:0);
+	}
 }
 
 function exponent(a,b){
 	a.expect("number");
 	b.expect("number");
-	return new Value("number",a.value**b.value);
+	return new Value("number",Math.pow(a.value,b.value));
 }
 
 function lessThan(a,b){
-	return comparison(a,b,function(a,b){return a<b});
+	a.expect(b.type);
+	switch(b.type){
+		case "number":case "string":
+			return new Value("number",a.value<b.value?1:0);
+		break;case "array":
+			return new Value("number",a.value.length<b.value.length?1:0);
+	}
 }
 
 function lessOrEqual(a,b){
-	return comparison(a,b,function(a,b){return a<=b});
+	a.expect(b.type);
+	switch(b.type){
+		case "number":case "string":
+			return new Value("number",a.value<=b.value?1:0);
+		break;case "array":
+			return new Value("number",a.value.length<=b.value.length?1:0);
+	}
 }
 
 function greaterOrEqual(a,b){
-	return comparison(a,b,function(a,b){return a>=b});
+	a.expect(b.type);
+	switch(b.type){
+		case "number":case "string":
+			return new Value("number",a.value>=b.value?1:0);
+		break;case "array":
+			return new Value("number",a.value.length>=b.value.length?1:0);
+	}
 }
 
 function equal(a,b){
-	return comparison(a,b,function(a,b){return a===b});
+	return new Value("number",compare(a,b)?1:0);
 }
 
 function notEqual(a,b){
-	return comparison(a,b,function(a,b){return a!==b});
+	return new Value("number",!compare(a,b)?1:0);
 }
 
 function logicalAnd(a,b){

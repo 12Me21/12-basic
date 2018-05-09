@@ -2,7 +2,6 @@
 //12-BASIC interpreter!//
 //=>==>==>==>==>==>==>=//
 {
-var defint=false;
 
 var ip,block,ast,variables=[{TABSTEP:{value:4}}],functions={},ifs,switches;
 var stopped=true,interval;
@@ -16,8 +15,8 @@ function run(astIn){
 	block=[ast[0]];
 	ifs=[];
 	switches=[];
-	//functions=ast[1];
-	variables=[{}];
+	functions=ast[2];
+	variables=ast[1];
 	stopped=false;
 	inputs=$input.value.split(",");
 	stepLevel2();
@@ -44,7 +43,7 @@ function stepLevel1(){
 }
 
 function currentTimeString(){
-	return new Date().toLocaleString("en-US",{hour:"numeric",minute:"numeric",hour12:true,second:"numeric"})
+	return new Date().toLocaleString("en-US",{hour:"numeric",minute:"numeric",hour12:true,second:"numeric"});
 }
 
 function stop(error){
@@ -55,7 +54,7 @@ function stop(error){
 			interval=undefined;
 		}
 		print("==================== ["+currentTimeString()+"]\n");
-		print(error?"ERROR: "+error:"OK")
+		print(error?"ERROR: "+error:"OK");
 		print("\n");
 	}
 }
@@ -80,88 +79,103 @@ function current(stack){
 }
 
 function callFunction(name,args){
-	//console.log(name,args)
-	assert(builtins[1][name],"Undefined function: \""+name+"\"")
-	if(builtins[1][name][args.length]){
-		return builtins[1][name][args.length].apply(null,args);
+	console.log("function!");
+	if(builtins[1][name]){
+		if(builtins[1][name][args.length]){
+			return builtins[1][name][args.length].apply(null,args);
+		}else{
+			assert(builtins[1][name].any,"\""+name+"\" does not accept "+args.length+" arguments");
+			return builtins[1][name].any(args);
+		}
 	}else{
-		assert(builtins[1][name].any,"\""+name+"\" does not accept "+args.length+" arguments");
-		return builtins[1][name].any(args);
+		assert(functions[name],"user function not defined either");
+		var x=functions[name].inputs;
+		for(var i=0;i<x.length;i++){
+			setVar(x[i],args[i]);
+		}
+		enterBlock(functions[name]);
+		while(1){
+			console.log("step!");
+			var x=step();
+			console.log(x);
+			if(x)
+				return expr(x);
+		}
+		
+		//assert(false,"feature not supported yet");
 	}
-	
-	//if(builtins[name] && builtins[name][args.length]){
-	
-	/*}else{
-		var x=functions[name][args.length];
-		assert(x,"undefined function "+name);
-		assert(false,"feature not supported");
-	}
-	return false;*/
 }
 
 function callSub(name,args2){
-	var args=args2.map(function(x){return expr(x)});
-	assert(builtins[0][name],"Undefined function: \""+name+"\"")
-	if(builtins[0][name][args.length]){
-		builtins[0][name][args.length].apply(null,args);
+	var args=args2.map(function(x){return expr(x);});
+	if(builtins[0][name]){
+		if(builtins[0][name][args.length]){
+			builtins[0][name][args.length].apply(null,args);
+		}else{
+			assert(builtins[0][name].any,"\""+name+"\" does not accept "+args.length+" arguments");
+			builtins[0][name].any(args);
+		}
 	}else{
-		assert(builtins[0][name].any,"\""+name+"\" does not accept "+args.length+" arguments");
-		builtins[0][name].any(args);
+		assert(functions[name],"user function not defined either");
+		var x=functions[name].inputs;
+		for(var i=0;i<x.length;i++){
+			setVar(x[i],args[i]);
+		}
+		console.log(functions[name]);
+		enterBlock(functions[name]);
 	}
 }
 
-function expr(n){
-	assert(n.constructor===Array,"internal error: invalid expression");
-	//console.log("expression",n);
+function expr(rpn){
+	assert(rpn.constructor===Array,"internal error: expected expression");
+	//console.log("expression",v);
 	var stack=[];
-	for(var i=0;i<n.length;i++){
+	for(var i=0;i<rpn.length;i++){
 		//console.log("stack",{...stack})
-		switch(n[i].type){
+		switch(rpn[i].type){
 			case "variable":
-				stack.push(getVar(n[i].name));
+				stack.push(rpn[i].variable.copy());
 			break;case "number":
-				stack.push(new Value("number",n[i].value));
+				stack.push(new Value("number",rpn[i].value));
 			break;case "string":
-				stack.push(new Value("string",n[i].value));
+				stack.push(new Value("string",rpn[i].value));
 			break;case "index":
 				var index=stack.pop();
-				var args=n[i].args;
 				var array=stack.pop();
 				index.expect("number");
 				index=index.value;
 				assert(index>=0 && index<array.value.length,"array access out of range");
 				stack.push(array.value[Math.floor(index)]);
 			break;case "operator":case "function":case "unary":
-				var args=n[i].args;
-				//console.log(args)
+				var args=rpn[i].args;
 				assert(args<=stack.length,"internal error: stack underflow");
 				var retval;
-				assert(retval=callFunction(n[i].name,args?stack.slice(-args):[]),"bad function/operator")
+				assert(retval=callFunction(rpn[i].name,arrayRight(stack,args)),"bad function/operator");
 				for(var j=0;j<args;j++)
 					stack.pop();
 				stack.push(retval);
 			break;case "array":
-				var args=n[i].args;
-				var array=new Value("array",stack.slice(-args));
+				var args=rpn[i].args;
+				var array=new Value("array",arrayRight(stack,args));
 				for(var j=0;j<args;j++)
 					stack.pop();
 				stack.push(array);
-				//console.log("stka",{...stack});
 			break;default:
-				assert(false,"invalid expression: bad token "+n[i].type);
+				assert(false,"invalid expression: bad token "+rpn[i].type);
 		}
 	}
-	//if(n.length!=1)
+	//if(rpn.length!=1)
 	//	throw "too complex expression :(";
 	//
-	assert(stack.length===1,"invalid expression: stack not empty")
+	assert(stack.length===1,"invalid expression: stack not empty");
 	return stack[0];
 }
 
+
+
 function print(text){
-	
 	$console.value+=text;
-	$console.scrollTop=$console.scrollTopMax
+	$console.scrollTop=$console.scrollTopMax;
 }
 
 function jumpTo(pos){
@@ -169,8 +183,7 @@ function jumpTo(pos){
 }
 
 function step(){
-	//console.log(block,variables)
-	jumpTo(current(ip)+1)
+	jumpTo(current(ip)+1);
 	//exiting block
 	while(current(ip)>=current(block).code.length){
 		var now=current(block);
@@ -189,7 +202,7 @@ function step(){
 				else
 					leaveBlock();
 			break;case "FOR":
-				var variable=getVar(now.variable.name);
+				var variable=getVar(now.variable.variable,now.variable.indexes);
 				if(now.step!==undefined){
 					var value=expr(now.step);
 					value.expect("number");
@@ -205,32 +218,39 @@ function step(){
 			break;case "main":
 				stop();
 				return;
+			break;case "FUNC":
+				leaveBlock();
+				return "ret";
 			break;case "IF":case "ELSE":case "ELSEIF":case "CASE":case "SWITCH":
 				leaveBlock();
 			break;default:
-				throw "bad block"+now.type
+				throw "bad block"+now.type;
 		}
 	}
 	var now=current(block).code[current(ip)];
-	//entering block
+	//////////////////
+	//entering block//
+	//////////////////
 	switch(now.type){
 		case "WHILE":
 			if(expr(now.condition).truthy())
 				enterBlock();
 		break;case "DO":
 			enterBlock();
-		break;case "REPEAT":
+		break;case "REPEAT":case "FUNC":
 			enterBlock();
 		break;case "FOR":
 			var value=expr(now.start);
 			value.expect("number");
-			assignVar(now.variable.name,value);
+			var variable=getVar(now.variable.variable,now.variable.indexes);
+			variable.expect("number");
+			variable.value=value.value;
 			value=expr(now.end);
 			value.expect("number");
-			if(getVar(now.variable.name).value<=value.value);
+			if(variable.value<=value.value);
 				enterBlock();
 		break;case "EXIT":
-			var levels=now.levels
+			var levels=now.levels;
 			if(levels){
 				levels=expr(now.levels);
 				levels.expect("number");
@@ -253,7 +273,7 @@ function step(){
 			}
 			//wow why's this part so hecking long?
 		break;case "BREAK": //M U L T I - L E V E L   B R E A K !
-			var levels=now.levels
+			var levels=now.levels;
 			if(levels){
 				levels=expr(now.levels);
 				levels.expect("number");
@@ -264,12 +284,12 @@ function step(){
 			while(1){
 				var x=current(block);
 				if(x.type==="main")
-					break
+					break;
 				else if(x.type==="FOR"||x.type==="WHILE"||x.type==="REPEAT"||x.type==="DO"){
-					levels--
+					levels--;
 					if(!levels){
 						leaveBlock();
-						break
+						break;
 					}
 				}
 				leaveBlock();
@@ -278,18 +298,27 @@ function step(){
 			while(1){
 				var x=current(block);
 				if(x.type==="main")
-					break
+					break;
 				else if(x.type==="FOR"||x.type==="WHILE"||x.type==="REPEAT"||x.type==="DO"){
 					jumpTo(Infinity);
 					break;
 				}
 				leaveBlock();
 			}
+		break;case "SWAP":
+			var var1=now.variable;
+			var var2=now.variable2;
+			var1=getVar(var1.variable,var1.indexes);
+			var2=getVar(var2.variable,var2.indexes);
+			var1.expect(var2.type);
+			var temp=var1.value;
+			var1.value=var2.value;
+			var2.value=temp;
 		break;case "function":
 			callSub(now.name,now.inputs);
-			//assert(false,"Tried to call function \""+now.name+"\". Subroutine-type functions are not supported yet");
 		break;case "assignment":
-			assignVar(now.variable.name,expr(now.value));
+			console.log(now,"asn");
+			setVar(now.variable,expr(now.value),now.indexes);
 		break;case "IF":
 			if(expr(now.condition).truthy()){
 				ifs[ifs.length-1]=true;
@@ -306,14 +335,15 @@ function step(){
 					enterBlock();
 				}
 			}
-		break;case "SWAP":
-			var aName=now.variable.name;
-			var bName=now.variable2.name;
-			var a=getVar(aName);
-			var b=getVar(bName);
-			a.expect(b.type);
-			assignVar(aName,b)
-			assignVar(bName,a)
+		break;case "RETURN":
+			while(1){
+				var x=current(block);
+				leaveBlock();
+				if(x.type==="FUNC")
+					break;
+			}
+			console.log("returning:",now.value);
+			return now.value;
 		break;case "SWITCH":
 			var condition=expr(now.condition);
 			enterBlock();
@@ -337,18 +367,6 @@ function step(){
 	//window.requestAnimationFrame(step);
 }
 
-/*function pushFuncScope(func){
-	variables.push({...})
-	if(x.outputs){
-		for(var i=0;i<x.outputs.length;i++){
-			createVar(x.outputs[i],new Value("undefined"));
-		}
-	}
-	for(var i=0;i<x.inputs.length;i++){
-		createVar(x.inputs[i],expr(now.inputs[i]));
-	}
-}*/
-
 function getNextInputValue(){
 	var x=inputs.shift();
 	if(x!==undefined)
@@ -357,58 +375,49 @@ function getNextInputValue(){
 		return "";
 }
 
-//get variable from name
-function getVar(name){
-	var i=variables.length-1;
-	var ret;
-	while(!ret&&i>=0){
-		ret=variables[i][name];
-		i--;
-	}
-	if(!ret)
-		ret=assignVar(name)
-	return ret;
+function getVar(variable,indexes){
+	if(indexes){
+		var x=getVarFromIndexHalf(variable,indexes);
+		return x[0][x[1]];
+	}else
+		return variable;
 }
 
-//assign or create variable
-function assignVar(name,value){
-	var currentVariables=current(variables);
+function getVarFromIndexHalf(variable,indexes){
+	variable.expect("array");
+	var array=variable;
+	for(var i=0;i<indexes.length-1;i++){
+		var index=expr(indexes[i]);
+		index.expect("number");
+		array=array.value[index.value|0];
+		array.expect("array");//we've gone too deep!
+	}
+	var index=expr(indexes[i]);
+	index.expect("number");
+	assert(index.value>=0 && index.value<array.value.length,"array index out of bounds");
+	return [array.value,index.value|0];
+}
+
+//assign variable
+function setVar(variable,value,indexes){
+	console.log(variable,value,"A");
+	var type=variable.type;
 	if(!value)
-		value=new Value(typeFromName(name));
-	switch(currentVariables[name] ? currentVariables[name].type : typeFromName(name)){
-		case "string":
-			assert(value.type==="string","type mismatch");
-			currentVariables[name]=value;
-		break;case "number":
-			assert(value.type==="number","type mismatch");
-			currentVariables[name]=value;
-		break;case "array":
-			assert(value.type==="array","type mismatch");
-			currentVariables[name]=value;
-		break;case "default":
-			assert(false,"could not create variable, invalid tyoe");
+		value=defaultValue(type);
+	if(indexes){
+		var x=getVarFromIndexHalf(variable,indexes);
+		x[0][x[1]]=value;
+	}else{
+		value.expect(type);
+		console.log(variable,value);
+		variable.value=value.value;
 	}
-	return currentVariables[name]
-}
-
-function typeFromName(name){
-	switch(name.substr(-1)){
-		case '$':
-			return "string";
-		case '#':
-			return "array";
-		default:
-			return "number";
-	}
-}
-
-function setVar(name,value){
-	return current(variables)[name]=value;
+	return variable;
 }
 
 function assert(condition,message){
 	if(!condition){
-		console.log(current(block).code[current(ip)])
+		console.log(current(block).code[current(ip)]);
 		message=" On line "+current(block).code[current(ip)].line+"\n"+message;
 		//message+=" on line "+current(block).code[current(ip)].line;
 		stop(message);

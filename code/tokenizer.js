@@ -1,9 +1,9 @@
 var lineNumber;
 //list of keywords
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
-var KEYWORDS=["ENDSWITCH","SWITCH","CASE","BREAK","CALL","CONTINUE","DEF","ELSE","ELSEIF","ENDIF","FOR","IF","NEXT","OUT","REPEAT","RETURN","SWAP","THEN","UNTIL","VAR","WEND","WHILE","DO","LOOP"];
+var KEYWORDS=["ENDSWITCH","SWITCH","CASE","BREAK","CALL","CONTINUE","FUNC","ENDFUNC","ELSE","ELSEIF","ENDIF","FOR","IF","NEXT","OUT","REPEAT","RETURN","SWAP","THEN","UNTIL","VAR","WEND","WHILE","DO","LOOP"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":0.201}
+var constants={"#PI":Math.PI,"#VERSION":0.240};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number
@@ -31,10 +31,10 @@ function tokenize(code){
 		return code.substring(startSkip!==undefined?whitespace+startSkip:whitespace,endSkip!==undefined?i-endSkip:i);
 	}
 	
-	function jump(pos){
-		i=pos-1;
-		next();
-	}
+	//function jump(pos){
+	//	i=pos-1;
+	//	next();
+	//}
 	
 	function pushWord(){
 		prev=i;
@@ -83,7 +83,7 @@ function tokenize(code){
 			next();
 			while(isAlpha||isDigit||c==='_')
 				next();
-			if(c==='$'||c==='#')
+			if(c==='$'||c==='#'||c==='@')
 				next();
 			return pushWord();
 		//numbers
@@ -91,7 +91,7 @@ function tokenize(code){
 			do
 				next();
 			while(isDigit);;;
-			var c2=code.charAt(i+1)
+			var c2=code.charAt(i+1);
 			if(c==='.' && c2>='0' && c2<='9'){
 				next();
 				while(isDigit)
@@ -115,7 +115,7 @@ function tokenize(code){
 			while(1){
 				next();
 				if(c===''){
-					break
+					break;
 				}else if(c==='"'){
 					next();
 					if(c!=='"')
@@ -131,7 +131,8 @@ function tokenize(code){
 			next();
 			while(c && c!=='\n' && c!=='\r')
 				next();
-			return push("comment");
+			next();
+			return push("linebreak","");
 		//constants
 		break;case '#':
 			next();

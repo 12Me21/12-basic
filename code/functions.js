@@ -8,17 +8,28 @@ function mid(a,b,c){
 		length-=-start;
 		start=0;
 	}
-	console.log(start,length)
 	assert(length>=0,"domain error mids "+start+" "+length);
 	return new Value("string",a.value.substr(start,length));
+}
+
+function absoluteValue(a){
+	a.expect("number");
+	return new Value("number",Math.abs(a.value));
 }
 
 function arrayGet(a,b){
 	a.expect("array");
 	b.expect("number");
 	assert(b.value>=0 && b.value<a.value.length,"out of bounds");
-	var x=a.value[Math.floor(b.value)];
-	return x.copy();
+	return a.value[Math.floor(b.value)].copy();
+}
+
+function filledArray(a,b){
+	a.expect("number");
+	var jsSucks=[];
+	for(var i=0;i<a.value;i++)
+		jsSucks.push(b.copy());
+	return new Value("array",jsSucks);
 }
 
 function arraySet(a,b,c){
@@ -94,25 +105,25 @@ function outputList(list){
 }
 
 function length(a){
-	assert(a.type==="string"||a.type==="array","type mismatch")
+	assert(a.type==="string"||a.type==="array","type mismatch");
 	return new Value("number",a.value.length);
 }
 
 function stringReverse(a){
-	a.expect("string")
+	a.expect("string");
 	return new Value("string",a.value.split("").reverse().join(""));
 }
 
 function arrayReverse(a){
-	a.expect("array")
+	a.expect("array");
 	return new Value("array",a.value.reverse());
 }
 
 function sort(a){
 	a.expect("array");
-	if(a.value.length==0)
+	if(a.value.length===0)
 		return new Value("array",[]);
-	var type=a.value[0].type
+	var type=a.value[0].type;
 	assert(type==="number"||type==="string","type mismatch");
 	for(var i=0;i<a.value.length;i++){
 		a.value[i].expect(type);
@@ -147,7 +158,7 @@ function ascii(a){
 
 function character(a){
 	a.expect("number");
-	return new Value("string",String.fromCharCode(a.value & 255));
+	return new Value("string",String.fromCharCode(a.value));
 }
 
 //this should be more strict!
@@ -202,8 +213,8 @@ function random1(a){
 function random2(a,b){
 	a.expect("number");
 	b.expect("number");
-	var start=a.value
-	var range=b.value-start+1
+	var start=a.value;
+	var range=b.value-start+1;
 	return new Value("number",Math.floor(Math.random()*range)+start);
 }
 
@@ -220,14 +231,14 @@ function cosine(a){
 function angle(a,b){
 	a.expect("number");
 	b.expect("number");
-	var atan=Math.atan2(b.value,a.value)/(Math.PI*2)
+	var atan=Math.atan2(b.value,a.value)/(Math.PI*2);
 	return new Value("number",atan>=0?atan:atan+1);
 }
 
 function hypot(a,b){
 	a.expect("number");
 	b.expect("number");
-	return new Value("number",Math.sqrt(a.value**2+b.value**2));
+	return new Value("number",Math.sqrt(Math.pow(a.value,2)+Math.pow(b.value,2)));
 }
 
 function sine2(a,b){
