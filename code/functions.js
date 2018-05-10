@@ -17,6 +17,27 @@ function absoluteValue(a){
 	return new Value("number",Math.abs(a.value));
 }
 
+function type(a){
+	return new Value("string",a.type);
+}
+
+function stringSplit(a,b){
+	a.expect("string");
+	b.expect("string");
+	var split=a.value.split(b.value)
+	var array=[];
+	for(i=0;i<split.length;i++){
+		array.push(new Value("string",split[i]));
+	}
+	return new Value("array",array);
+}
+
+function arrayJoin(a,b){
+	a.expect("array");
+	b.expect("string");
+	return new Value("string",a.value.join(b.value))
+}
+
 function arrayGet(a,b){
 	a.expect("array");
 	b.expect("number");

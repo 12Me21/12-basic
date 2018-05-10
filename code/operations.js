@@ -61,6 +61,9 @@ var builtins=[{
 	MILLISECOND:{0:millisec},
 	//ARRAY:{2:filledArray},
 	ABS:{1:absoluteValue},
+	SPLIT:{2:stringSplit},
+	JOIN:{2:arrayJoin},
+	TYPE:{1:type},
 }];
 
 function add(a,b){
