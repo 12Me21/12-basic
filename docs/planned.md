@@ -8,6 +8,8 @@
 * ~~Remove { } array syntax. `:(`~~
 * Structs/user defined types/tables/whatever you want to call them. Will use `@` type suffix, and literals are written as **{** *key* [ **=** *value* ] [ , ... ] **}**. `{X=1,Z=3} + {X=2,Y=1} -> {X=2,Y=1,Z=3}`
 * A variable type that can store a value of any type (type suffix `?`).
+* VAR
+* Way of giving variables types without using suffixes.
 
 ## Maybe
 
