@@ -1,9 +1,9 @@
 var lineNumber;
 //list of keywords
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
-var KEYWORDS=["ENDSWITCH","SWITCH","CASE","BREAK","CALL","CONTINUE","FUNC","ENDFUNC","ELSE","ELSEIF","ENDIF","FOR","IF","NEXT","OUT","REPEAT","RETURN","SWAP","THEN","UNTIL","VAR","WEND","WHILE","DO","LOOP"];
+var KEYWORDS=["SWITCH","CASE","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","VAR","PRINT", "WHILE","WEND", "DO","LOOP"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":0.256};
+var constants={"#PI":Math.PI,"#VERSION":0.314};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number
@@ -23,7 +23,7 @@ function tokenize(code){
 		//These are single CHARACTERS (that is, in a language that has a char type, these should be chars and not strings)
 		isAlpha=(c>='A'&&c<='Z'||c>='a'&&c<='z');
 		isDigit=(c>='0'&&c<='9');
-		if(c==="\n")
+		if(c==='\n')
 			lineNumber++;
 	}
 	
@@ -44,8 +44,10 @@ function tokenize(code){
 		if(upper==="NOT")
 			type="unary";
 		//word operators
-		else if(upper==="AND"||upper==="OR"||upper==="XOR")
+		else if(upper==="AND"||upper==="OR"||upper==="XOR"||upper==="UNTIL")
 			type="operator";
+		else if(upper==="TO")
+			type="TO";
 		//true/false
 		else if(upper==="TRUE"){
 			type="number";
@@ -71,7 +73,7 @@ function tokenize(code){
 	next();
 	return function(){
 		//read whitespace
-		while(c===" "||c==="\t")
+		while(c===' '||c==='\t')
 			next();
 		//if this is the end, push a special ending token
 		if(c==='')
@@ -96,18 +98,17 @@ function tokenize(code){
 				next();
 				while(isDigit)
 					next();
-				return push("number",parseFloat("0"+getWord()));
 			}
-			return push("number",parseFloat("0"+getWord()));
+			return push("number",parseFloat(getWord()));
 		}else if(c==='.'){
 			next();
 			if(isDigit){
 				do
 					next();
 				while(isDigit);;;
-				return push("number",parseFloat("0"+getWord()));
-			}else
-				return push("dot");
+				return push("number",parseFloat(getWord()));
+			}
+			return push("dot");
 		}else switch(c){
 		//strings
 		case '"':
@@ -198,7 +199,7 @@ function tokenize(code){
 		//print shortcut
 		break;case '?':
 			next();
-			return push("word","PRINT");
+			return push("PRINT");
 		//other
 		break;default:
 			next();

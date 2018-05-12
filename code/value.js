@@ -9,15 +9,23 @@ function Value(type,value){
 	}
 }
 
-Value.prototype.copy=function(){ // DEEPEST FUCKING COPY
+Value.prototype.copy=function(){ // DEEPEST COPY
 	if(this.type==="array"){
-		var FUCK=[];
+		var copy=[];
 		for(var i=0;i<this.value.length;i++)
-			FUCK.push(this.value[i].copy());
-		return new Value(this.type,FUCK);
+			copy.push(this.value[i].copy());
+		return new Value(this.type,copy);
 	}
 	return new Value(this.type,this.value);
 };
+
+Value.prototype.set=function(value,dynamic){
+	if(dynamic)
+		this.type=value.type;
+	else
+		value.expect(this.type);
+	this.value=value.value;
+}
 
 Value.prototype.toString=function(base){
 	switch(this.type){

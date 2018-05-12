@@ -38,38 +38,17 @@ function arrayJoin(a,b){
 	return new Value("string",a.value.join(b.value))
 }
 
-function arrayGet(a,b){
-	a.expect("array");
-	b.expect("number");
-	assert(b.value>=0 && b.value<a.value.length,"out of bounds");
-	return a.value[Math.floor(b.value)].copy();
-}
-
-function filledArray(a,b){
-	a.expect("number");
-	var jsSucks=[];
-	for(var i=0;i<a.value;i++)
-		jsSucks.push(b.copy());
-	return new Value("array",jsSucks);
-}
-
-function arraySet(a,b,c){
-	a.expect("array");
-	b.expect("number");
-	assert(b.value>=0 && b.value<a.value.length,"out of bounds");
-	a.value[b.value]=c.copy();
-}
-
 function arrayPush(a,b){
-	console.log(a);
 	a.expect("array");
-	a.value.push(b);
+	assert(a.variable,"invalid push");
+	a.variable.value.push(b);
 }
 
 function arrayPop(a){
 	a.expect("array");
+	assert(a.variable,"need variable for POP");
 	assert(a.value.length>0,"array empty");
-	return a.value.pop();
+	return a.variable.value.pop();
 }
 
 function right(a,b){
@@ -92,6 +71,23 @@ function right2(a,b,c){
 	c.expect("number");
 	assert(b.value>=0,"domain error");
 	return new Value("string",a.value.substr(a.value.length-b.value-c.value,b.value));
+}
+
+function without(a,b){
+	a.expect("array");
+	switch(b.type){
+		case "number":
+			return new Value("array",a.value.filter(function(v,i){return i!=b.value}));
+		case "array":
+			var indexes=[];
+			for(var i=0;i<b.value.length;i++){
+				b.value[i].expect("number");
+				indexes.push(b.value[i].value);
+			}
+			return new Value("array",a.value.filter(function(v,i){return indexes.indexOf(i)==-1}));
+		default:
+			b.expect("array");
+	}
 }
 
 function mid1(a,b){
@@ -130,9 +126,35 @@ function length(a){
 	return new Value("number",a.value.length);
 }
 
-function stringReverse(a){
-	a.expect("string");
-	return new Value("string",a.value.split("").reverse().join(""));
+function reverse(a){
+	switch(a.type){
+		case "string":
+			return new Value("string",a.value.split("").reverse().join(""));
+		case "array":
+			return new Value("array",a.value.reverse());
+		default:
+			assert(false,"type mismatch");
+	}
+}
+
+function arrayRemove1(array,position){
+	array.expect("array");
+	assert(array.variable,"expected variable");
+	position.expect("number");
+	position=position.value|0
+	x=(array.variable.value[position]);
+	array.variable=new Value("array",array.variable.value.splice(position,1));
+	return x;
+}
+
+function arrayRemove(array,position){
+	array.expect("array");
+	assert(array.variable,"expected variable");
+	position.expect("number");
+	position=position.value|0
+	return (array.variable.value[position])
+	array.variable=new Value(array.variable.value.splice(position,1));
+	
 }
 
 function arrayReverse(a){

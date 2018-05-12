@@ -3,7 +3,7 @@
 //=>==>==>==>==>==>==>=//
 {
 
-var ip,block,ast,variables=[{TABSTEP:{value:4}}],functions={},ifs,switches;
+var ip,block,ast,functions,variables,ifs,switches;
 var stopped=true,interval;
 var inputs=[];
 
@@ -15,7 +15,7 @@ function run(astIn){
 	block=[ast[0]];
 	ifs=[];
 	switches=[];
-	functions=ast[2];
+	functions=ast[2]; //technically this is never accessed directly (but values inside it are, through references inside expressions)
 	variables=ast[1];
 	stopped=false;
 	inputs=$input.value.split(",");
@@ -61,7 +61,8 @@ function stop(error){
 
 function enterBlock(into){
 	block.push(into||current(block).code[current(ip)]);
-	ip[ip.length-1]=current(ip)+1;
+	if(!into)
+		ip[ip.length-1]++;
 	ip.push(-1);
 	ifs.push(0);
 	switches.push(undefined);
@@ -79,62 +80,42 @@ function current(stack){
 }
 
 function callFunction(name,args){
-	console.log("function!");
-	if(builtins[1][name]){
-		if(builtins[1][name][args.length]){
-			return builtins[1][name][args.length].apply(null,args);
+	if(builtins[name]){
+		if(builtins[name][args.length]){
+			return builtins[name][args.length].apply(null,args);
 		}else{
-			assert(builtins[1][name].any,"\""+name+"\" does not accept "+args.length+" arguments");
-			return builtins[1][name].any(args);
+			assert(builtins[name].any,"\""+name+"\" does not accept "+args.length+" arguments");
+			return builtins[name].any(args);
 		}
 	}else{
-		assert(functions[name],"user function not defined either");
+		assert(functions[name] && functions[name].inputs.length===args.length,"user function not defined either");
 		var x=functions[name].inputs;
 		for(var i=0;i<x.length;i++){
 			setVar(x[i],args[i]);
 		}
 		enterBlock(functions[name]);
 		while(1){
-			console.log("step!");
 			var x=step();
-			console.log(x);
 			if(x)
-				return expr(x);
+				return x;
 		}
-		
-		//assert(false,"feature not supported yet");
 	}
 }
 
-function callSub(name,args2){
-	var args=args2.map(function(x){return expr(x);});
-	if(builtins[0][name]){
-		if(builtins[0][name][args.length]){
-			builtins[0][name][args.length].apply(null,args);
-		}else{
-			assert(builtins[0][name].any,"\""+name+"\" does not accept "+args.length+" arguments");
-			builtins[0][name].any(args);
-		}
-	}else{
-		assert(functions[name],"user function not defined either");
-		var x=functions[name].inputs;
-		for(var i=0;i<x.length;i++){
-			setVar(x[i],args[i]);
-		}
-		console.log(functions[name]);
-		enterBlock(functions[name]);
-	}
-}
-
+///////////////////////
+//evaluate expression//
+///////////////////////
 function expr(rpn){
+	//console.log("expression",rpn);
 	assert(rpn.constructor===Array,"internal error: expected expression");
-	//console.log("expression",v);
 	var stack=[];
 	for(var i=0;i<rpn.length;i++){
 		//console.log("stack",{...stack})
 		switch(rpn[i].type){
 			case "variable":
-				stack.push(rpn[i].variable.copy());
+				var x=rpn[i].variable.copy()
+				x.variable=rpn[i].variable;
+				stack.push(x);
 			break;case "number":
 				stack.push(new Value("number",rpn[i].value));
 			break;case "string":
@@ -145,15 +126,18 @@ function expr(rpn){
 				index.expect("number");
 				index=index.value;
 				assert(index>=0 && index<array.value.length,"array access out of range");
-				stack.push(array.value[Math.floor(index)]);
+				var x=array.value[Math.floor(index)]
+				if(array.variable)
+					x.variable=array.variable.value[index]; //problem was here. used "array" instead of "array.variable" oops sorry :(/ damage was done while trying to fix D:
+				stack.push(x);
 			break;case "operator":case "function":case "unary":
 				var args=rpn[i].args;
 				assert(args<=stack.length,"internal error: stack underflow");
 				var retval;
-				assert(retval=callFunction(rpn[i].name,arrayRight(stack,args)),"bad function/operator");
+				retval=callFunction(rpn[i].name,arrayRight(stack,args));
 				for(var j=0;j<args;j++)
 					stack.pop();
-				stack.push(retval);
+				stack.push((retval && retval.constructor===Value) ? retval.copy() : retval);
 			break;case "array":
 				var args=rpn[i].args;
 				var array=new Value("array",arrayRight(stack,args));
@@ -171,8 +155,6 @@ function expr(rpn){
 	return stack[0];
 }
 
-
-
 function print(text){
 	$console.value+=text;
 	$console.scrollTop=$console.scrollTopMax;
@@ -184,7 +166,9 @@ function jumpTo(pos){
 
 function step(){
 	jumpTo(current(ip)+1);
-	//exiting block
+	/////////////////
+	//exiting block//
+	/////////////////
 	while(current(ip)>=current(block).code.length){
 		var now=current(block);
 		switch(now.type){
@@ -202,7 +186,9 @@ function step(){
 				else
 					leaveBlock();
 			break;case "FOR":
-				var variable=getVar(now.variable.variable,now.variable.indexes);
+				var variable=expr(now.variable);
+				assert(variable=variable.variable,"FOR loop needs variable silly");
+				variable.expect("number");
 				if(now.step!==undefined){
 					var value=expr(now.step);
 					value.expect("number");
@@ -220,7 +206,7 @@ function step(){
 				return;
 			break;case "FUNC":
 				leaveBlock();
-				return "ret";
+				return true;
 			break;case "IF":case "ELSE":case "ELSEIF":case "CASE":case "SWITCH":
 				leaveBlock();
 			break;default:
@@ -242,7 +228,8 @@ function step(){
 		break;case "FOR":
 			var value=expr(now.start);
 			value.expect("number");
-			var variable=getVar(now.variable.variable,now.variable.indexes);
+			var variable=expr(now.variable);
+			assert(variable=variable.variable,"FOR loop needs variable silly");
 			variable.expect("number");
 			variable.value=value.value;
 			value=expr(now.end);
@@ -305,20 +292,14 @@ function step(){
 				}
 				leaveBlock();
 			}
-		break;case "SWAP":
-			var var1=now.variable;
-			var var2=now.variable2;
-			var1=getVar(var1.variable,var1.indexes);
-			var2=getVar(var2.variable,var2.indexes);
-			var1.expect(var2.type);
-			var temp=var1.value;
-			var1.value=var2.value;
-			var2.value=temp;
-		break;case "function":
-			callSub(now.name,now.inputs);
-		break;case "assignment":
-			console.log(now,"asn");
-			setVar(now.variable,expr(now.value),now.indexes);
+		break;case "PRINT":
+			var printString="";
+			for(var i=0;i<now.value.length;i++){
+				printString+=(i>0?" ":"")+expr(now.value[i]).toString();
+			}
+			print(printString+"\n");
+		break;case "expression":
+			expr(now.value);
 		break;case "IF":
 			if(expr(now.condition).truthy()){
 				ifs[ifs.length-1]=true;
@@ -342,8 +323,9 @@ function step(){
 				if(x.type==="FUNC")
 					break;
 			}
-			console.log("returning:",now.value);
-			return now.value;
+			if(now.value)
+				return expr(now.value);
+			return true;
 		break;case "SWITCH":
 			var condition=expr(now.condition);
 			enterBlock();
@@ -369,38 +351,13 @@ function step(){
 
 function getNextInputValue(){
 	var x=inputs.shift();
-	if(x!==undefined)
-		return new Value("string",x);
-	else
+	if(x===undefined)
 		return "";
-}
-
-function getVar(variable,indexes){
-	if(indexes){
-		var x=getVarFromIndexHalf(variable,indexes);
-		return x[0][x[1]];
-	}else
-		return variable;
-}
-
-function getVarFromIndexHalf(variable,indexes){
-	variable.expect("array");
-	var array=variable;
-	for(var i=0;i<indexes.length-1;i++){
-		var index=expr(indexes[i]);
-		index.expect("number");
-		array=array.value[index.value|0];
-		array.expect("array");//we've gone too deep!
-	}
-	var index=expr(indexes[i]);
-	index.expect("number");
-	assert(index.value>=0 && index.value<array.value.length,"array index out of bounds");
-	return [array.value,index.value|0];
+	return new Value("string",x);
 }
 
 //assign variable
 function setVar(variable,value,indexes){
-	console.log(variable,value,"A");
 	var type=variable.type;
 	if(!value)
 		value=defaultValue(type);
@@ -409,7 +366,6 @@ function setVar(variable,value,indexes){
 		x[0][x[1]]=value;
 	}else{
 		value.expect(type);
-		console.log(variable,value);
 		variable.value=value.value;
 	}
 	return variable;

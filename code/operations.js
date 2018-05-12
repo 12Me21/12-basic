@@ -1,36 +1,41 @@
 //array remove: start,[length]
-var builtins=[{
-	CLS:  {0:clearScreen},
-	VSYNC:{0:vsync},
-	PRINT:{any:printList},
-	SET:  {3:arraySet},
-	PUSH: {2:arrayPush}, //any
-	OUTPUT:{any:outputList},
-	STOP:{0:stop},
-},{
+var builtins={
+	"!":  {1:logicalNot},
+	"NOT":{1:logicalNot},
+	
 	"^":  {2:exponent},
+	
 	"*":  {2:multiply},
+	"/":  {2:divide},
+	"%":  {2:mod},
+	"\\": {2:div},
+	
+	"+":  {2:add},
+	"-":  {2:subtract,1:negate},
+	
+	"TO": {2:range},
+	"UNTIL": {2:openRange},
+	
+	"<<": {2:leftShift},
+	">>": {2:rightShift},
+	
 	">":  {2:greaterThan},
 	"<":  {2:lessThan},
 	">=": {2:greaterOrEqual},
 	"<=": {2:lessOrEqual},
+	
 	"==": {2:equal},
 	"!=": {2:notEqual},
-	"-":  {2:subtract,1:negate},
-	"!":  {1:logicalNot},
-	"+":  {2:add},
-	"/":  {2:divide},
-	"<<": {2:leftShift},
-	">>": {2:rightShift},
-	"AND":{2:logicalAnd},
-	"OR": {2:logicalOr},
-	"XOR":{2:logicalXor},
+	
 	"&":  {2:bitwiseAnd},
-	"|":  {2:bitwiseOr},
 	"~":  {2:bitwiseXor,1:bitwiseNot},
-	"%":  {2:mod},
-	"\\": {2:div},
-	"NOT":{1:bitwiseNot},
+	"|":  {2:bitwiseOr},
+	
+	"AND":{2:logicalAnd},
+	"XOR":{2:logicalXor},
+	"OR": {2:logicalOr},
+	
+	"=":  {2:assign},
 	
 	MID$:    {3:mid,2:mid1},
 	ASC:     {1:ascii},
@@ -53,18 +58,56 @@ var builtins=[{
 	INPUT$:  {0:input},
 	REPLACE$:{3:replace},
 	TRIMEND$:{2:cutright},
-	GET:     {2:arrayGet},
+	//GET:     {2:arrayGet},
 	POP:     {1:arrayPop},
-	REVERSE$:{1:stringReverse},
-	"REVERSE#":{1:arrayReverse},
-	"SORT#":   {1:sort},
+	REVERSE:{1:reverse},
+	SORT:   {1:sort},
 	MILLISECOND:{0:millisec},
 	//ARRAY:{2:filledArray},
 	ABS:{1:absoluteValue},
 	SPLIT:{2:stringSplit},
 	JOIN:{2:arrayJoin},
 	TYPE:{1:type},
-}];
+	CLS:  {0:clearScreen},
+	VSYNC:{0:vsync},
+	PRINT:{any:printList},
+	//SET:  {3:arraySet},
+	PUSH: {2:arrayPush}, //any
+	OUTPUT:{any:outputList},
+	STOP:{0:stop},
+	REMOVE:{2:arrayRemove1,3:arrayRemove},
+	WITHOUT:{2:without},
+};
+
+function range(a,b){
+	var array=[]
+	for(var i=a.value;i<=b.value;i++)
+		array.push(new Value("number",i));
+	return new Value("array",array);
+}
+
+function openRange(a,b){
+	var array=[]
+	for(var i=a.value;i<b.value;i++)
+		array.push(new Value("number",i));
+	return new Value("array",array);
+}
+
+function assign(a,b){
+	if(a.variable){
+		b.expect(a.variable.type);
+		a.variable.set(b);
+	}else{
+		a.expect("array");
+		b.expect("array");
+		assert(b.length===a.length,"arrays different length");
+		for(var i=0;i<a.value.length;i++){
+			assert(a.value[i].variable,"During variable list assignment, expected variable but got "+a.value[i].type+". Perhaps you didn't mean to use =?");
+			assign(a.value[i],b.value[i]);
+		}
+	}
+	return b;
+}
 
 function add(a,b){
 	switch(a.type){

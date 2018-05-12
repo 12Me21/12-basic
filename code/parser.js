@@ -9,8 +9,6 @@
 //nextToken: function that returns the next token
 //callback: output function
 
-var vtop=0;
-
 function parse(nextToken){
 	//current token
 	var type,word;
@@ -21,9 +19,12 @@ function parse(nextToken){
 	//false=not, 1=no paren, 2=()
 	var defs={};
 	
+	var noEquals,noTo;
+	
 	var current={};
 	var currentBlocks=[];
-	var variables=[{}];
+	var globals={};
+	var variables=globals;
 	
 	//enter code block
 	function startBlock(){
@@ -141,10 +142,15 @@ function parse(nextToken){
 			//FOR/NEXT
 			break;case "FOR":
 				current.type="FOR";
-				assert(current.variable=readVariable(),"Missing FOR variable");
+				noEquals=true;
+				assert(current.variable=readExpression(),"Missing FOR variable");
+				noEquals=false;
+				console.log(type,word)
 				assert(readToken("="),"Missing = in FOR");
+				noTo=true;
 				current.start=readExpression();
-				assert(readToken("word") && word==="TO","Missing TO in FOR");
+				noTo=false;
+				assert(readToken("TO"),"Missing TO in FOR");
 				current.end=readExpression();
 				if(readToken("word") && word==="STEP")
 					current.step=readExpression();
@@ -176,54 +182,29 @@ function parse(nextToken){
 				current.levels=readExpression();
 			break;case "CONTINUE":
 				current.type="CONTINUE";
-			//SWAP
-			break;case "SWAP":
-				current.type="SWAP";
-				assert(current.variable=readVariable(),"Missing variable in SWAP");
-				assert(readToken(","),"Missing comma in SWAP");
-				assert(current.variable2=readVariable(),"Missing variable in SWAP");
 			//FUNC/ENDFUNC/RETURN
 			break;case "FUNC":
 				current.type="FUNC";
 				assert(readToken("word"),"missing function name");
 				current.name=word;
+				current.variables={};
+				variables=current.variables;
 				current.inputs=readList(readDeclaration);
 				startBlock();
 			break;case "ENDFUNC":
-				assert(currentBlock().type==="FUNC","aaaa");
+				assert(currentBlock().type==="FUNC","ENDFUNC without FUNC");
+				variables=globals;
 				endDef();
 			break;case "RETURN":
 				current.type="RETURN";
 				current.value=readExpression();
-			//OUT/THEN
-			break;case "OUT":case "THEN":
-				assert(false,"Illegal OUT/THEN");
-			//other words
-			break;case "word":
-				//var name=word;
-				var varName=readVariable(true);
-				if(readToken("=")){
-					var x=(variables[vtop][varName.name] || (variables[vtop][varName.name]=new Value(typeFromName(varName.name))));
-					current.type="assignment";
-					current.variable=x;
-					current.indexes=varName.indexes;
-					assert(current.value=readExpression(),"Missing value in assignment");
-				}else{
-					current.type="function";
-					current.name=varName.name;
-					current.inputs=readList(readExpression);
-					if(readToken("OUT"))
-						current.outputs=readList(readVariable);
-					else
-						current.outputs=[];
-				}
+			break;case "PRINT":
+				current.type="PRINT";
+				current.value=readList(readExpression);
 			//comment
-			break;case "comment":
-			//colon NOP
-			break;case ":":
+			break;case "comment":case ":":
 			//line break, end
-			break;case "eof":
-			case "linebreak":
+			break;case "eof":case "linebreak":
 				if(ifThisLine){
 					ifThisLine=false;
 					if(codeAfterThen){
@@ -232,7 +213,9 @@ function parse(nextToken){
 					}
 				}
 			break;default:
-				assert(false,"Expected statement, got "+type+" '"+word+"'");
+				readNext--;
+				assert(current.value=readExpression(),"no expr when expected");
+				current.type="expression";
 		}
 		if(current.type){
 			current.line=lineNumber;
@@ -243,7 +226,7 @@ function parse(nextToken){
 	
 	function readDeclaration(){
 		if(readToken("word")){
-			var x=(variables[vtop][word] || (variables[vtop][word]=new Value(typeFromName(word))));
+			var x=(variables[word] || (variables[word]=new Value(typeFromName(word))));
 			return x;
 		}else
 			return false;
@@ -252,23 +235,11 @@ function parse(nextToken){
 	//keys:
 	//name: [variable name expr token list]
 	//indexes: [index list]
-	function readVariable(alreadyRead){
-		if(!alreadyRead)
-			next();
+	function readVariable(){
+		next();
 		var name=word;
-		if(!alreadyRead)
-			var variable=(variables[vtop][name] || (variables[vtop][name]=new Value(typeFromName(name))));
-		var indexes=[];
-		while(1){
-			if(readToken("[")){
-				indexes.push(readExpression());
-				assert(readToken("]"),"missing ]");
-			}else
-				break;
-		}
-		if(indexes.length===0)
-			indexes=undefined;
-		return {name:name,indexes:indexes,variable:variable};
+		var variable=(variables[name] || (variables[name]=new Value(typeFromName(name))));
+		return {name:name,variable:variable};
 	}
 	
 	function currentBlock(){
@@ -333,6 +304,7 @@ function parse(nextToken){
 			return Infinity;
 		else
 			switch(token.name){
+				//value operators
 				case "^":
 					return 11;
 				case "*":case "/": case "\\": case "%":
@@ -341,6 +313,9 @@ function parse(nextToken){
 					return 9;
 				case "<<":case ">>":
 					return 8;
+				//
+				case "TO":case "UNTIL":
+					return 7.5;
 				case "<":case "<=":case ">":case ">=":
 					return 7;
 				case "==":case "!=":
@@ -357,9 +332,13 @@ function parse(nextToken){
 					return 1;
 				case "OR":
 					return 0;
+				case "=":
+					return -1; //ha!/
 			}
 		assert(false,"error prec "+token.name);
 	}
+	
+	//I should... um
 	function left(token){
 		return 0;
 	}
@@ -371,7 +350,7 @@ function parse(nextToken){
 			switch(token.type){
 				case "number":case "string":case "variable":case "function":case "array":case "index": //see, functions are actually pushed AFTER their arguments, so we can just send them directly to the output! :D
 					rpn.push(token);
-				break;case "operator":case "unary":
+				break;case "operator":case "unary":case "=":
 					while(stack.length){
 						var top=stack[stack.length-1];
 						if(top.type!="("&&(prec(top)>=prec(token) || (prec(top)==prec(token) && left(token)))){
@@ -422,7 +401,7 @@ function parse(nextToken){
 					expr.push({type:")"});
 					expr.push({type:"function",name:name,args:x.length});
 				}else{
-					var x=(variables[vtop][name] || (variables[vtop][name]=new Value(typeFromName(name))));
+					var x=(variables[name] || (variables[name]=new Value(typeFromName(name))));
 					expr.push({type:"variable",variable:x});
 				}
 			//number literals
@@ -477,7 +456,8 @@ function parse(nextToken){
 			}else
 				break;
 		//read infix operator + expression
-		if(readToken("operator")||readToken("minus")||readToken("xor")){
+		if(readToken("operator")||readToken("minus")||readToken("xor")||(!noEquals&&readToken("="))||(!noTo&&readToken("TO"))){
+			console.log("operator!!",word)
 			expr.push({type:"operator",name:word,args:2});
 			assert(readExpression2(),"Operator missing second argument");
 		}
