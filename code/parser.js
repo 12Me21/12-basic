@@ -187,13 +187,13 @@ function parse(nextToken){
 				current.type="FUNC";
 				assert(readToken("word"),"missing function name");
 				current.name=word;
-				current.variables={};
-				variables=current.variables;
+				//current.variables={};
+				//variables=current.variables;
 				current.inputs=readList(readDeclaration);
 				startBlock();
 			break;case "ENDFUNC":
 				assert(currentBlock().type==="FUNC","ENDFUNC without FUNC");
-				variables=globals;
+				//variables=globals;
 				endDef();
 			break;case "RETURN":
 				current.type="RETURN";

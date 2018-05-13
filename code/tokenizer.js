@@ -3,7 +3,7 @@ var lineNumber;
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
 var KEYWORDS=["SWITCH","CASE","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","VAR","PRINT", "WHILE","WEND", "DO","LOOP"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":0.341};
+var constants={"#PI":Math.PI,"#VERSION":0.342};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number

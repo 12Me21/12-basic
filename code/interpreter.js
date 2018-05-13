@@ -137,7 +137,7 @@ function expr(rpn){
 				retval=callFunction(rpn[i].name,arrayRight(stack,args));
 				for(var j=0;j<args;j++)
 					stack.pop();
-				stack.push((retval && retval.constructor===Value) ? retval.copy() : retval);
+				stack.push(retval);
 			break;case "array":
 				var args=rpn[i].args;
 				var array=new Value("array",arrayRight(stack,args));

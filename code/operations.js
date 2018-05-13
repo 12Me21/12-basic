@@ -237,9 +237,9 @@ function logicalXor(a,b){
 
 function logicalOr(a,b){
 	if(a.truthy())
-		return a.copy();
+		return a;
 	else
-		return b.copy();
+		return b;
 }
 
 function logicalNot(a){
