@@ -14,6 +14,7 @@ var builtins={
 	"-":  {2:subtract,1:negate},
 	
 	"TO": {2:range},
+	"STEP": {2:step},
 	"UNTIL": {2:openRange},
 	
 	"<<": {2:leftShift},
@@ -77,6 +78,7 @@ var builtins={
 	STOP:{0:stop},
 	REMOVE:{2:arrayRemove1,3:arrayRemove},
 	WITHOUT:{2:without},
+	GET:{2:arrayWith},
 };
 
 function range(a,b){

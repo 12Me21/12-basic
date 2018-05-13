@@ -316,6 +316,9 @@ function parse(nextToken){
 				//
 				case "TO":case "UNTIL":
 					return 7.5;
+				case "STEP":
+					return 7.25;
+					
 				case "<":case "<=":case ">":case ">=":
 					return 7;
 				case "==":case "!=":

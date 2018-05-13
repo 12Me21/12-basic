@@ -38,6 +38,15 @@ function arrayJoin(a,b){
 	return new Value("string",a.value.join(b.value))
 }
 
+function arrayWith(a,b){
+	a.expect("array");
+	b.expect("array");
+	var array=[]
+	for(var i=0;i<b.value.length;i++)
+		array.push(a.value[b.value[i].value]);
+	return new Value("array",array)
+}
+
 function arrayPush(a,b){
 	a.expect("array");
 	assert(a.variable,"invalid push");
@@ -56,6 +65,15 @@ function right(a,b){
 	b.expect("number");
 	assert(b.value>=0,"domain error");
 	return new Value("string",a.value.substr(a.value.length-b.value));
+}
+
+function step(a,b){
+	a.expect("array");
+	b.expect("number");
+	var array=[];
+	for(i=0;i<a.value.length;i+=b.value)
+		array.push(a.value[i]);
+	return new Value("array",array);
 }
 
 function cutright(a,b){
