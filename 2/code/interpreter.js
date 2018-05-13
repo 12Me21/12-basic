@@ -1,4 +1,5 @@
-//=>==>==>==>==>==>==>=//
+try{
+	//=>==>==>==>==>==>==>=//
 //12-BASIC interpreter!//
 //=>==>==>==>==>==>==>=//
 var ip,block,ast,functions,variables,ifs,switches;
@@ -401,4 +402,7 @@ function assert(condition,message){
 		error.name="RunError";
 		throw error;
 	}
+}
+}catch(e){
+	alert(e)
 }
