@@ -18,7 +18,8 @@ function run(astIn){
 	functions=ast[2]; //technically this is never accessed directly (but values inside it are, through references inside expressions)
 	variables=ast[1];
 	stopped=false;
-	inputs=$input.value.split(",");
+	inputs=$input.value.split("\n");
+	console.log(inputs)
 	stepLevel2();
 }
 
