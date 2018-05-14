@@ -1,14 +1,27 @@
-try{
-	//=>==>==>==>==>==>==>=//
+//=>==>==>==>==>==>==>=//
 //12-BASIC interpreter!//
 //=>==>==>==>==>==>==>=//
-var ip,block,ast,functions,variables,ifs,switches;
-var stopped=true,interval;
-var inputs=[];
-var consoleColor;
 
+var ast,functions;
+var ip,block,ifs,switches;
+var variables;
+
+var stopped=true,interval;
 var steps=1000,stepDelay=1,doVsync=false;
 
+var inputs=[];
+var consoleColor,consoleBG;
+
+var consoleOut;
+
+//Normally I'd use window.onload
+//but apparently somehow <body onload=...> overrides that even though this should be executed later and they're entirely different things
+//this is the most awful syntax and I hate it
+window.addEventListener("load",function(){
+	consoleOut=new Output($console);
+});
+
+//run code
 function run(astIn){
 	ast=astIn;
 	ip=[-1];
@@ -19,16 +32,16 @@ function run(astIn){
 	variables=[scopeFromTemplate(ast[1])];
 	stopped=false;
 	inputs=$input.value.split("\n");
-	console.log(inputs)
+	//console.log(inputs)
 	stepLevel2();
 }
 
+//get array of values from list of types
 function scopeFromTemplate(template){
-	var scope=[]
-	console.log(template)
-	for(var i=0;i<template.length;i++){
-		scope.push(template[i].copy());
-	}
+	var scope=[];
+	//console.log(template);
+	for(var i=0;i<template.length;i++)
+		scope.push(new Value(template[i].type));
 	return scope;
 }
 
@@ -45,18 +58,18 @@ function stepLevel1(){
 	}
 }
 
-function currentTimeString(){
-	return new Date().toLocaleString("en-US",{hour:"numeric",minute:"numeric",hour12:true,second:"numeric"});
-}
-
+//end program
 function stop(error){
-	console.log("trying to end")
+	console.log("trying to end");
 	stopped=true;
 	window.clearInterval(interval);
 	consoleColor=undefined;
-	print("==================== ["+currentTimeString()+"]\n");
-	print(error?"ERROR: "+error:"OK");
-	print("\n");
+	consoleOut.print("==================== ["+currentTimeString()+"]\n");
+	if(error)
+		consoleOut.print("ERROR: "+error,undefined,"red");
+	else
+		consoleOut.print("OK");
+	consoleOut.print("\n");
 }
 
 function enterBlock(into){
@@ -92,8 +105,13 @@ function callFunction(name,args){
 		var x=functions[name].inputs;
 		variables.push(scopeFromTemplate(functions[name].variables));
 		for(var i=0;i<x.length;i++){
-			getVarRef(x[i]).set(args[i]);
+			console.log(args[i])
+			if(x[i].isRef)
+				setVarRef(x[i],args[i].variable);
+			else
+				getVarRef(x[i]).set(args[i]);
 		}
+		
 		enterBlock(functions[name]);
 		while(1){
 			var x=step();
@@ -107,9 +125,14 @@ function callFunction(name,args){
 
 function getVarRef(r){
 	if(r.level===0)
-		return variables[0][r.index]
-	return variables[variables.length-1][r.index]
-	
+		return variables[0][r.index];
+	return variables[variables.length-1][r.index];
+}
+
+function setVarRef(r,v){
+	if(r.level===0)
+		variables[0][r.index]=v;
+	variables[variables.length-1][r.index]=v;
 }
 
 ///////////////////////
@@ -125,6 +148,7 @@ function expr(rpn,unUsed){
 				var ref=getVarRef(rpn[i].variable);
 				var x=ref.copy();
 				x.variable=ref;
+				x.isRef=rpn[i].isRef;
 				stack.push(x);
 			break;case "number":
 				stack.push(new Value("number",rpn[i].value));
@@ -163,22 +187,8 @@ function expr(rpn,unUsed){
 }
 
 function print(text){
-	if(consoleColor)
-		$console.innerHTML=$console.innerHTML+colorSpan(text,consoleColor);
-	else
-		$console.innerHTML=$console.innerHTML+escapeHTML(text);
-	$console.scrollTop=$console.scrollTopMax;
-}
-
-function colorSpan(text,color){
-	return "<span style=\"color:"+escapeHTMLAttribute(color)+";\">"+escapeHTML(text)+"</span>";
-}
-
-function escapeHTML(text){
-	return text.replace(/&/g,"&amp;").replace(/</g,"&lt;");//.replace(/[\r\n]/g,"<br>");
-}
-function escapeHTMLAttribute(text){
-	return text.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+	consoleOut.print(text,consoleColor,consoleBG);
+	//$console.scrollTop=$console.scrollTopMax;
 }
 
 function jumpTo(pos){
@@ -231,7 +241,7 @@ function step(){
 			break;case "IF":case "ELSE":case "ELSEIF":case "CASE":case "SWITCH":
 				leaveBlock();
 			break;default:
-				throw "bad block"+now.type;
+				assert(false,"Internal error: '"+now.type+"' is not a valid block type.");
 		}
 	}
 	var now=current(block).code[current(ip)];
@@ -402,7 +412,4 @@ function assert(condition,message){
 		error.name="RunError";
 		throw error;
 	}
-}
-}catch(e){
-	alert(e)
 }

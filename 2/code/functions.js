@@ -235,6 +235,11 @@ function string(a){
 	return new Value("string",a.toString());
 }
 
+function ceil(a){
+	a.expect("number");
+	return new Value("number",Math.ceil(a.value));
+}
+
 //this should be more strict!
 function paddedString(a,b){
 	a.expect("number");
@@ -262,14 +267,34 @@ function random2(a,b){
 	return new Value("number",Math.floor(Math.random()*range)+start);
 }
 
+function floor(a){
+	a.expect("number");
+	return new Value("number",Math.floor(a.value));
+}
+
+function sign(a){
+	a.expect("number");
+	return new Value("number",Math.sign(a.value));
+}
+
 function sine(a){
 	a.expect("number");
-	return new Value("number",Math.sin(a.value*(Math.PI*2)));
+	var angle=wrap(a.value,1);
+	if(angle===0||angle===1/2)
+		return new Value("number",0);
+	return new Value("number",Math.sin(angle*(Math.PI*2)));
 }
 
 function cosine(a){
 	a.expect("number");
-	return new Value("number",Math.cos(a.value*(Math.PI*2)));
+	var angle=wrap(a.value,1);
+	if(angle===1/4||angle===3/4)
+		return new Value("number",0);
+	return new Value("number",Math.cos(angle*(Math.PI*2)));
+}
+
+function wrap(a,b){
+	return a-Math.floor(a/b)*b;
 }
 
 function angle(a,b){

@@ -1,14 +1,5 @@
-///to do
-//generate the variable lists during parsing
-//easy
-//block scope variables?
-//maybe...
-
 //parser
 //tokens->ast
-//nextToken: function that returns the next token
-//callback: output function
-
 function parse(nextToken){
 	//current token
 	var type,word;
@@ -229,6 +220,12 @@ function parse(nextToken){
 	function readDeclaration(){
 		if(readToken("word"))
 			return vari();
+		if(readToken("REF")){
+			assert(readToken("word"),"ref needs variable name");
+			var x=vari();
+			x.isRef=true;
+			return x;
+		}
 		return false;
 	}
 	
@@ -269,13 +266,18 @@ function parse(nextToken){
 			for(var j=0;j<variables[i].length;j++)
 				if(variables[i][j].name===name)
 					return {level:i,index:j};
-		assert(false,"Variable '"+name+"' has not been declared. Use <name>:<type> (ex: 'X:NUMBER=4').");
+		consoleBG="yellow"
+		print("[Warning] Variable '"+name+"' has not been declared. Use <name>:<type> (ex: 'X:NUMBER=4').\n");
+		consoleBG="transparent"
+		return createVar(name,typeFromName(name));
 	}
 	
 	function createVar(name,type){
-		x=new Value(type);
-		x.name=name;
-		return {level:variables.length-1,index:variables[variables.length-1].push(x)-1};
+		var currentScope=variables[variables.length-1];
+		for(var i=0;i<currentScope.length;i++)
+			if(currentScope[i].name===name)
+				return {level:variables.length-1,index:i};
+		return {level:variables.length-1,index:currentScope.push({name:name,type:type})-1};
 	}
 	
 	function readList2(reader){
@@ -395,11 +397,15 @@ function parse(nextToken){
 	
 	function vari(name){
 		name = name || word
-		if(readToken(":")||readToken("AS")){
-			next();
-			assert(type==="word" && word==="STRING" || word==="NUMBER" || word==="ARRAY","'"+word+"' is not a valid type name. Types are NUMBER, STRING, and ARRAY.");
-			return createVar(name,word.toLowerCase());
+		if((name==="STRING"||name==="NUMBER"||name==="ARRAY")&&readToken("word")){
+			return createVar(word,name.toLowerCase());
 		}
+			
+		//if(readToken(":")||readToken("AS")){
+		//	next();
+		//	assert(type==="word" && word==="STRING" || word==="NUMBER" || word==="ARRAY" || word==="DYNAMIC","'"+word+"' is not a valid type name. Types are NUMBER, STRING, and ARRAY.");
+			
+		//}
 		return findVar(name);
 	}
 	
@@ -441,6 +447,10 @@ function parse(nextToken){
 				assert(readToken("]"),"Missing \"]\"");
 				expr.push({type:")"});
 				expr.push({type:"array",args:x.length});
+			break;case "REF":
+				assert(readToken("word"),"REF needs a variable.")
+				var name=word;
+				expr.push({type:"variable",variable:vari(name),name:name,isRef:true});
 			//other crap
 			break;default:
 				readNext=0;

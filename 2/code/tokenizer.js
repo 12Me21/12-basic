@@ -1,9 +1,9 @@
 var lineNumber;
 //list of keywords
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
-var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","VAR","PRINT", "WHILE","WEND", "DO","LOOP"];
+var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","VAR","PRINT", "WHILE","WEND", "DO","LOOP", "REF"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":1.013};
+var constants={"#PI":Math.PI,"#VERSION":1.021};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number

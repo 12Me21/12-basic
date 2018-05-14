@@ -70,7 +70,7 @@ var builtins={
 	JOIN:{2:arrayJoin},
 	TYPE:{1:type},
 	CLS:  {0:clearScreen},
-	VSYNC:{0:vsync},
+	//VSYNC:{0:vsync},
 	//PRINT:{any:printList},
 	//SET:  {3:arraySet},
 	PUSH: {2:arrayPush}, //any
@@ -80,6 +80,9 @@ var builtins={
 	WITHOUT:{2:without},
 	GET:{2:arrayWith},
 	COLOR:{1:color},
+	CEIL:{1:ceil},
+	FLOOR:{1:ceil},
+	SIGN:{1:sign},
 };
 
 function endProgram(){
