@@ -25,7 +25,7 @@ Value.prototype.set=function(value,dynamic){
 	else
 		value.expect(this.type);
 	this.value=value.value;
-}
+};
 
 Value.prototype.toString=function(base){
 	switch(this.type){

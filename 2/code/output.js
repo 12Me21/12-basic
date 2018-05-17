@@ -14,7 +14,7 @@ Output.prototype.print=function(text,textColor,backgroundColor){
 	if(backgroundColor)
 		html+="</span>";
 	this.element.innerHTML=this.element.innerHTML+html;
-}
+};
 
 function escapeHTML(text){
 	return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/[\r\n]/g,"<br>");

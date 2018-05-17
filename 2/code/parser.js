@@ -3,23 +3,18 @@
 function parse(nextToken){
 	//current token
 	var type,word;
-	//stored tokens
-	var newType,newWord;
-	//keep track of stored tokens
-	var readNext=1;
-	//false=not, 1=no paren, 2=()
-	var defs={};
+	var readNext=true;
 	
 	var noEquals,noTo;
 	
 	var current={};
 	var currentBlocks=[];
 	var variables=[[]];
+	var functions={};
 	
 	//enter code block
 	function startBlock(){
 		current.code=[];
-		current.line=lineNumber;
 		currentBlocks.push(current);
 		current={};
 	}
@@ -31,7 +26,7 @@ function parse(nextToken){
 	//leave code block + create function
 	function endDef(){
 		var block=currentBlocks.pop();
-		defs[block.name]=block;
+		functions[block.name]=block;
 	}
 	
 	//control single line IF statement
@@ -48,11 +43,10 @@ function parse(nextToken){
 			readStatement();
 		}catch(error){
 			if(error.name==="ParseError")
-				return error.message+" on line "+lineNumber;
+				return error.message+" somewhere in your program";
 			//bad error!!!
-			else{
+			else
 				throw error;
-			}
 		}
 	}while(type!=="eof");;;
 	
@@ -131,23 +125,32 @@ function parse(nextToken){
 				ifThisLine=false;
 			//FOR/NEXT
 			break;case "FOR":
-				current.type="FOR";
+				
 				//read variable
 				noEquals=true;
 				assert(current.variable=readExpression(),"Missing FOR variable.");
 				noEquals=false;
-				assert(readToken("="),"Missing = in FOR.");
-				//read start
-				noTo=true;
-				current.start=readExpression();
-				noTo=false;
-				assert(readToken("TO"),"Missing TO in FOR.");
-				current.end=readExpression();
-				if(readToken("STEP"))
-					current.step=readExpression();
+				if(readToken("equal")){
+					//read start
+					noTo=true;
+					current.start=readExpression();
+					noTo=false;
+					if(!readToken("TO")){
+						assert(readToken("UNTIL"),"Missing TO in FOR.");
+						current.open=true;
+					}
+					current.end=readExpression();
+					if(readToken("STEP"))
+						current.step=readExpression();
+					current.type="FOR";
+				}else{
+					assert(readToken("IN"),"Missing =/IN in FOR.");
+					current.array=readExpression();
+					current.type="FORIN";
+				}
 				startBlock();
 			break;case "NEXT":
-				assert(currentBlock().type=="FOR","NEXT without FOR.");
+				assert(currentBlock().type==="FOR"||currentBlock().type==="FORIN","NEXT without FOR.");
 				readExpression();
 				endBlock();
 			//VAR!
@@ -206,12 +209,11 @@ function parse(nextToken){
 					}
 				}
 			break;default:
-				readNext--;
+				readNext=false;
 				assert(current.value=readExpression(),"no expr when expected");
 				current.type="expression";
 		}
 		if(current.type){
-			current.line=lineNumber;
 			currentBlocks[currentBlocks.length-1].code.push(current);//push to current block!
 			current={};
 		}
@@ -237,10 +239,10 @@ function parse(nextToken){
 	function readToken(wantedType){
 		next();
 		if(type===wantedType){
-			readNext=1;
+			readNext=true;
 			return true;
 		}
-		readNext=0;
+		readNext=false;
 		return false;
 	}
 	
@@ -265,19 +267,19 @@ function parse(nextToken){
 		for(var i=variables.length-1;i>=0;i--)
 			for(var j=0;j<variables[i].length;j++)
 				if(variables[i][j].name===name)
-					return {level:i,index:j};
-		consoleBG="yellow"
-		print("[Warning] Variable '"+name+"' has not been declared. Use <name>:<type> (ex: 'X:NUMBER=4').\n");
-		consoleBG="transparent"
-		return createVar(name,typeFromName(name));
+					return new IndirectVariableReference(i,j,name);
+		consoleBG="yellow";
+		print("[Warning] Variable '"+name+"' has not been declared. Use <type> <name> (ex: 'NUMBER X=4').\n");
+		consoleBG=undefined;
+		return createVar(name,"unset");
 	}
 	
 	function createVar(name,type){
 		var currentScope=variables[variables.length-1];
 		for(var i=0;i<currentScope.length;i++)
 			if(currentScope[i].name===name)
-				return {level:variables.length-1,index:i};
-		return {level:variables.length-1,index:currentScope.push({name:name,type:type})-1};
+				return new IndirectVariableReference(variables.length-1,i,name);
+		return new IndirectVariableReference(variables.length-1,currentScope.push({name:name,type:type})-1,name);
 	}
 	
 	function readList2(reader){
@@ -312,35 +314,33 @@ function parse(nextToken){
 			switch(token.name){
 				//value operators
 				case "^":
-					return 11;
+					return 13;
 				case "*":case "/": case "\\": case "%":
-					return 10;
+					return 12;
 				case "+":case "-":
-					return 9;
+					return 11;
 				case "<<":case ">>":
-					return 8;
-				//
+					return 10;
 				case "TO":case "UNTIL":
-					return 7.5;
-					
+					return 9;
 				case "<":case "<=":case ">":case ">=":
-					return 7;
+					return 8;
 				case "==":case "!=":
-					return 6;
+					return 7;
 				case "&":
-					return 5;
+					return 6;
 				case "~":
-					return 4;
+					return 5;
 				case "|":
-					return 3;
+					return 4;
 				case "AND":
-					return 2;
+					return 3;
 				case "XOR":
-					return 1;
+					return 2;
 				case "OR":
-					return 0;
+					return 1;
 				case "=":
-					return -1; //ha!/
+					return 0; //ha!/
 			}
 		assert(false,"error prec "+token.name);
 	}
@@ -355,57 +355,49 @@ function parse(nextToken){
 		for(var i=0;i<expr.length;i++){
 			var token=expr[i];
 			switch(token.type){
-				case "number":case "string":case "variable":case "function":case "array":case "index": //see, functions are actually pushed AFTER their arguments, so we can just send them directly to the output! :D
+				case "number":case "string":
+					rpn.push(new Value(token.type,token.value));
+				break;case "variable":case "function":case "arrayLiteral":case "index": //see, functions are actually pushed AFTER their arguments, so we can just send them directly to the output! :D
 					rpn.push(token);
 				break;case "operator":case "unary":case "=":
 					while(stack.length){
 						var top=stack[stack.length-1];
-						if(top.type!="("&&(prec(top)>=prec(token) || (prec(top)==prec(token) && left(token)))){
+						if(top.type!="("&&(prec(top)>=prec(token)))
 							rpn.push(stack.pop());
-						}else{
+						else
 							break;
-						}
 					}
 					stack.push(token);
 				break;case "comma":
 					while(stack.length){
-						if(stack[stack.length-1].type!="("){
+						if(stack[stack.length-1].type!="(")
 							rpn.push(stack.pop());
-						}else{
+						else
 							break;
-						}
 					}
 				break;case "(":
 					stack.push(token);
 				break;case ")":
 					while(1){
-						var top=stack[stack.length-1];
-						if(top.type!="(")
+						if(stack[stack.length-1].type!="(")
 							rpn.push(stack.pop());
 						else
 							break;
 					}
 					stack.pop();
 				break;default:
-				assert(false,"error typ "+token.type);
+					assert(false,"Internal error: '"+token.type+"' is not a valid token type.");
 			}
 		}
-		while(stack.length)
-			rpn.push(stack.pop());
-		return rpn;
+		return simplify(rpn.concat(stack.reverse()));
 	}
 	
 	function vari(name){
-		name = name || word
-		if((name==="STRING"||name==="NUMBER"||name==="ARRAY")&&readToken("word")){
+		name = name || word;
+		if((name==="STRING"||name==="NUMBER"||name==="ARRAY"||name==="DYNAMIC")&&readToken("word"))
 			return createVar(word,name.toLowerCase());
-		}
-			
-		//if(readToken(":")||readToken("AS")){
-		//	next();
-		//	assert(type==="word" && word==="STRING" || word==="NUMBER" || word==="ARRAY" || word==="DYNAMIC","'"+word+"' is not a valid type name. Types are NUMBER, STRING, and ARRAY.");
-			
-		//}
+		if(name==="VAR"&&readToken("word"))
+			return createVar(word,"unset");
 		return findVar(name);
 	}
 	
@@ -416,14 +408,7 @@ function parse(nextToken){
 			case "word":
 				var name=word;
 				//function
-				if(readToken("(")){
-					expr.push({type:"("}); //all we needed!
-					var x=readList2(readExpression2);
-					assert(readToken(")"),"Missing \")\" in function call");
-					expr.push({type:")"});
-					expr.push({type:"function",name:name,args:x.length}); //optimize: replace name with reference to function
-				//variable
-				}else
+				if(!readFunction())
 					expr.push({type:"variable",variable:vari(name),name:name});
 			//number literals
 			break;case "number":
@@ -446,14 +431,10 @@ function parse(nextToken){
 				var x=readList2(readExpression2);
 				assert(readToken("]"),"Missing \"]\"");
 				expr.push({type:")"});
-				expr.push({type:"array",args:x.length});
-			break;case "REF":
-				assert(readToken("word"),"REF needs a variable.")
-				var name=word;
-				expr.push({type:"variable",variable:vari(name),name:name,isRef:true});
+				expr.push({type:"arrayLiteral",args:x.length});
 			//other crap
 			break;default:
-				readNext=0;
+				readNext=false;
 				return false;
 		}
 		//read [index] and .function
@@ -464,16 +445,9 @@ function parse(nextToken){
 				assert(readToken("]"),"Missing \"]\"");
 				expr.push({type:")"});
 				expr.push({type:"index",args:"2"});
-			}else if(readToken("dot")){
-				assert(readToken("word"),"Dot missing function");
-				var name=word;
-				assert(readToken("("),"Dot missing function");
-				expr.push({type:"("}); //all we needed!
-				var x=readList2(readExpression2);
-				assert(readToken(")"),"Missing \")\" in function call");
-				expr.push({type:")"});
-				expr.push({type:"function",name:name,args:x.length+1});
-			}else
+			}else if(readToken("dot"))
+				assert(readToken("word") && readFunction(1),"Dot missing function");
+			else
 				break;
 		//TO can be normal operator or ternary operator with STEP.
 		if(!noTo&&readToken("TO")){
@@ -481,25 +455,32 @@ function parse(nextToken){
 			expr.push(x);
 			assert(readExpression2(),"Operator missing second argument");
 			if(readToken("STEP")){
-				x.args=3
+				x.args=3;
 				assert(readExpression2(),"TO/STEP missing step value");
 			}
 		//normal 2 argument operator.
-		}else if(readToken("operator")||readToken("minus")||readToken("xor")||(!noEquals&&readToken("="))){
+		}else if(readToken("operator")||readToken("minus")||readToken("xor")||(!noEquals&&readToken("equal"))){
 			expr.push({type:"operator",name:word,args:2});
 			assert(readExpression2(),"Operator missing second argument");
 		}
 		return true;
 	}
 	
-	function readFunction(){
-		
+	function readFunction(extraLength){
+		var name=word;
+		if(readToken("(")){
+			expr.push({type:"("});
+			var x=readList2(readExpression2);
+			assert(readToken(")"),"Missing \")\" in function call");
+			expr.push({type:")"});
+			expr.push({type:"function",name:name,args:x.length+(extraLength||0)}); //optimize: replace name with reference to function
+			return true;
+		}
 	}
 	
 	//throw error with message if condition is false
 	function assert(condition,message){
 		if(!condition){
-			//message//+=" on line "+lineNumber;
 			console.log(message);
 			var error=new Error(message);
 			error.name="ParseError";
@@ -509,19 +490,13 @@ function parse(nextToken){
 	
 	//I forgot how this works...
 	function next(){
-		if(readNext===1){
+		assert(readNext===false||readNext===true,"invalid readnext?");
+		if(readNext){
 			var items=nextToken();
 			type=items.type;
 			word=items.word;
-		}else if(readNext===-1){
-			type=newType;
-			word=newWord;
-			readNext=1;
-		//I don't think this ever happens?
-		}else if(readNext===-2)
-			readNext=-1;
-		else
-			readNext=1;
+		}else
+			readNext=true;
 	}
 	
 	//handle single line IF blocks at the end of the program (temporary fix)
@@ -535,5 +510,5 @@ function parse(nextToken){
 	
 	if(currentBlocks.length>1)
 		return "Unclosed "+currentBlocks[1].type;
-	return [currentBlocks[0],variables[0],defs];
+	return [currentBlocks[0],variables[0],functions];
 }

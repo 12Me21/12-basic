@@ -26,22 +26,21 @@ function stringSplit(a,b){
 	b.expect("string");
 	var split=a.value.split(b.value)
 	var array=[];
-	for(i=0;i<split.length;i++){
+	for(i=0;i<split.length;i++)
 		array.push(new Value("string",split[i]));
-	}
 	return new Value("array",array);
 }
 
 function arrayJoin(a,b){
 	a.expect("array");
 	b.expect("string");
-	return new Value("string",a.value.join(b.value))
+	return new Value("string",a.value.join(b.value));
 }
 
 function arrayWith(a,b){
 	a.expect("array");
 	b.expect("array");
-	var array=[]
+	var array=[];
 	for(var i=0;i<b.value.length;i++)
 		array.push(a.value[b.value[i].value]);
 	return new Value("array",array)
@@ -49,15 +48,15 @@ function arrayWith(a,b){
 
 function arrayPush(a,b){
 	a.expect("array");
-	assert(a.variable,"invalid push");
-	a.variable.value.push(b);
+	assert(a.ref,"invalid push");
+	a.ref.value.push(b);
 }
 
 function arrayPop(a){
 	a.expect("array");
-	assert(a.variable,"need variable for POP");
+	assert(a.ref,"need variable for POP");
 	assert(a.value.length>0,"array empty");
-	return a.variable.value.pop();
+	return a.ref.value.pop();
 }
 
 function right(a,b){

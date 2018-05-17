@@ -1,9 +1,8 @@
-var lineNumber;
 //list of keywords
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
-var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","VAR","PRINT", "WHILE","WEND", "DO","LOOP", "REF"];
+var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","PRINT", "WHILE","WEND", "DO","LOOP", "REF", "TO", "STEP","IN"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":1.021};
+var constants={"#PI":Math.PI,"#VERSION":1.123};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number
@@ -23,34 +22,26 @@ function tokenize(code){
 		//These are single CHARACTERS (that is, in a language that has a char type, these should be chars and not strings)
 		isAlpha=(c>='A'&&c<='Z'||c>='a'&&c<='z');
 		isDigit=(c>='0'&&c<='9');
-		if(c==='\n')
-			lineNumber++;
+		//if(c==='\n')
+			//lineNumber++;
 	}
 	
 	function getWord(startSkip,endSkip){
 		return code.substring(startSkip!==undefined?whitespace+startSkip:whitespace,endSkip!==undefined?i-endSkip:i);
 	}
 	
-	//function jump(pos){
-	//	i=pos-1;
-	//	next();
-	//}
-	
 	function pushWord(){
 		prev=i;
 		
 		var upper=getWord().toUpperCase(); //optimize by only getting uppercase if word is 5 chars or less
+		
 		var type;
 		//bitwise not
 		if(upper==="NOT")
 			type="unary";
 		//word operators
-		else if(upper==="AND"||upper==="OR"||upper==="XOR"||upper==="UNTIL")
+		else if(upper==="AND"||upper==="OR"||upper==="XOR")
 			type="operator";
-		else if(upper==="TO")
-			type="TO";
-		else if(upper==="STEP")
-			type="STEP";
 		//true/false
 		else if(upper==="TRUE"){
 			type="number";
@@ -64,15 +55,15 @@ function tokenize(code){
 		//not a keyword
 		else
 			type="word";
-		return {type:type,word:upper};
+		
+		return push(type,upper);
 	}
-	
 	
 	function push(type,word){
 		prev=i;
 		return {type:type,word:word!==undefined ? word : getWord()};
 	}
-	lineNumber=1;
+	
 	next();
 	return function(){
 		//read whitespace
@@ -171,7 +162,7 @@ function tokenize(code){
 				next();
 				return push("operator");
 			}
-			return push("=");
+			return push("equal");
 		//logical not, not equal
 		break;case '!':
 			next();

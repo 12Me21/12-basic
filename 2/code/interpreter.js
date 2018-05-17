@@ -32,17 +32,14 @@ function run(astIn){
 	variables=[scopeFromTemplate(ast[1])];
 	stopped=false;
 	inputs=$input.value.split("\n");
-	//console.log(inputs)
 	stepLevel2();
 }
 
 //get array of values from list of types
 function scopeFromTemplate(template){
-	var scope=[];
-	//console.log(template);
-	for(var i=0;i<template.length;i++)
-		scope.push(new Value(template[i].type));
-	return scope;
+	return template.map(function(x){
+		return new Variable(x.type);
+	});
 }
 
 function stepLevel2(){
@@ -102,37 +99,29 @@ function callFunction(name,args){
 		}
 	}else{
 		assert(functions[name] && functions[name].inputs.length===args.length,"user function not defined either");
-		var x=functions[name].inputs;
+		var parameters=functions[name].inputs;
 		variables.push(scopeFromTemplate(functions[name].variables));
-		for(var i=0;i<x.length;i++){
-			console.log(args[i])
-			if(x[i].isRef)
-				setVarRef(x[i],args[i].variable);
-			else
-				getVarRef(x[i]).set(args[i]);
+		for(var i=0;i<parameters.length;i++){
+			if(parameters[i].isRef){
+				assert(args[i].ref,"function requires variable");
+				var x=parameters[i].getFrom(variables);
+				assert(x.type==="unset" || x.type===args[i].ref.type,"Function '"+name+"' expected "+x.type+" variable as "+th(i+1)+" argument, got "+args[i].ref.type+" variable instead.");
+				parameters[i].matchRef(variables,args[i].ref);
+			}else
+				parameters[i].getFrom(variables).set(args[i]);
 		}
-		
 		enterBlock(functions[name]);
 		while(1){
 			var x=step();
 			if(stopped)
 				break;
-			if(x)
+			if(x){
+				variables.pop()
 				return x;
+			}
 		}
+		
 	}
-}
-
-function getVarRef(r){
-	if(r.level===0)
-		return variables[0][r.index];
-	return variables[variables.length-1][r.index];
-}
-
-function setVarRef(r,v){
-	if(r.level===0)
-		variables[0][r.index]=v;
-	variables[variables.length-1][r.index]=v;
 }
 
 ///////////////////////
@@ -145,34 +134,38 @@ function expr(rpn,unUsed){
 	for(var i=0;i<rpn.length;i++){
 		switch(rpn[i].type){
 			case "variable":
-				var ref=getVarRef(rpn[i].variable);
-				var x=ref.copy();
-				x.variable=ref;
-				x.isRef=rpn[i].isRef;
+				console.log(rpn[i].variable,variables);
+				var ref=rpn[i].variable.getFrom(variables);
+				var x=ref.value.copy();
+				x.ref=ref;
 				stack.push(x);
-			break;case "number":
-				stack.push(new Value("number",rpn[i].value));
-			break;case "string":
-				stack.push(new Value("string",rpn[i].value));
+			break;case "number":case "string":case "array":
+				stack.push(rpn[i]);
 			break;case "index":
 				var index=stack.pop();
 				var array=stack.pop();
 				index.expect("number");
-				index=index.value;
+				index=Math.floor(index.value);
 				assert(index>=0 && index<array.value.length,"Tried to access element "+index+" of an array with length "+array.value.length+".");
-				var x=array.value[Math.floor(index)]
-				if(array.variable)
-					x.variable=array.variable.value[index]; //problem was here. used "array" instead of "array.variable" oops sorry :(/ damage was done while trying to fix D:
+				var x=array.value[index];
+				if(array.ref){
+					console.log("ref",array.ref.value.value[index])
+					x.ref=new Variable("dynamic",array.ref.value.value[index]);
+				}
 				stack.push(x);
-			break;case "operator":case "function":case "unary":
+			break;case "operator":case "function":case "unary": //I think these are all just "function" ...
 				var args=rpn[i].args;
 				assert(args<=stack.length,"Internal error: stack underflow");
 				var retval;
 				retval=callFunction(rpn[i].name,arrayRight(stack,args));
 				for(var j=0;j<args;j++)
 					stack.pop();
-				stack.push(retval);
-			break;case "array":
+				if(retval){
+					stack.push(retval);
+				}else{
+					//aaa
+				}
+			break;case "arrayLiteral":
 				var args=rpn[i].args;
 				var array=new Value("array",arrayRight(stack,args));
 				for(var j=0;j<args;j++)
@@ -218,17 +211,35 @@ function step(){
 					leaveBlock();
 			break;case "FOR":
 				var variable=expr(now.variable);
-				assert(variable=variable.variable,"FOR loop needs a variable.");
-				variable.expect("number");
+				assert(variable=variable.ref,"FOR loop needs a variable.");
+				variable.value.expect("number");
 				if(now.step!==undefined){
 					var value=expr(now.step);
 					value.expect("number");
-					variable.value+=value.value;
+					variable.value.value+=value.value;
 				}else
-					variable.value++;
+					variable.value.value++;
 				var value=expr(now.end);
 				value.expect("number");
-				if(variable.value<=value.value) //only works for loops that count upwards!
+				if(now.open){
+					if(variable.value.value<value.value)
+						jumpTo(0);
+					else
+						leaveBlock();
+				}else{
+					if(variable.value.value<=value.value)
+						jumpTo(0);
+					else
+						leaveBlock();
+				}
+			break;case "FORIN":
+				var variable=expr(now.variable);
+				assert(variable=variable.ref,"FOR loop needs a variable.");
+				variable.value.expect("number");
+				variable.value.value++;
+				var array=expr(now.array);
+				array.expect("array");
+				if(variable.value.value<array.value.length)
 					jumpTo(0);
 				else
 					leaveBlock();
@@ -260,12 +271,26 @@ function step(){
 			var value=expr(now.start);
 			value.expect("number");
 			var variable=expr(now.variable);
-			assert(variable=variable.variable,"FOR loop needs a variable.");
-			variable.expect("number");
-			variable.value=value.value;
+			assert(variable=variable.ref,"FOR loop needs a variable.");
+			variable.value.expect("number");
+			variable.value.value=value.value;
 			value=expr(now.end);
 			value.expect("number");
-			if(variable.value<=value.value);
+			if(now.open){
+				if(variable.value.value<value.value)
+					enterBlock();
+			}else{
+				if(variable.value.value<=value.value)
+					enterBlock();
+			}
+		break;case "FORIN":
+			var variable=expr(now.variable);
+			assert(variable=variable.ref,"FOR loop needs a variable.");
+			variable.value.expect("number");
+			variable.value.value=0; //bad
+			var array=expr(now.array);
+			array.expect("array");
+			if(array.value.length>0)
 				enterBlock();
 		break;case "EXIT":
 			var levels=now.levels;
@@ -325,9 +350,8 @@ function step(){
 			}
 		break;case "PRINT":
 			var printString="";
-			for(var i=0;i<now.value.length;i++){
+			for(var i=0;i<now.value.length;i++)
 				printString+=(i>0?" ":"")+expr(now.value[i]).toString();
-			}
 			print(printString+"\n");
 		break;case "expression":
 			expr(now.value,true);
@@ -386,26 +410,9 @@ function getNextInputValue(){
 	return new Value("string",x);
 }
 
-//assign variable
-function setVar(variable,value,indexes){
-	var type=variable.type;
-	if(!value)
-		value=defaultValue(type);
-	if(indexes){
-		var x=getVarFromIndexHalf(variable,indexes);
-		x[0][x[1]]=value;
-	}else{
-		value.expect(type);
-		variable.value=value.value;
-	}
-	return variable;
-}
-
 function assert(condition,message){
+	//console.log(condition,message)
 	if(!condition){
-		console.log(current(block).code[current(ip)]);
-		message=" On line "+current(block).code[current(ip)].line+"\n"+message;
-		//message+=" on line "+current(block).code[current(ip)].line;
 		stop(message);
 		console.log(message);
 		var error=new Error(message);

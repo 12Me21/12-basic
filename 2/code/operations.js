@@ -36,7 +36,7 @@ var builtins={
 	"XOR":{2:logicalXor},
 	"OR": {2:logicalOr},
 	
-	"=":  {2:assign},
+	"=":  {2:assign,noSimplify:true},
 	
 	MID$:    {3:mid,2:mid1},
 	ASC:     {1:ascii},
@@ -46,7 +46,7 @@ var builtins={
 	NUMBER:  {1:value,2:valueBase},
 	//STR$:  {1:string,2:paddedString,3:paddedStringBase},
 	STRING$: {1:string,2:paddedString,3:paddedStringBase},
-	RANDOM:  {1:random1,2:random2},
+	RANDOM:  {1:random1,2:random2,noSimplify:true},
 	SIN:     {1:sine,2:sine2},
 	COS:     {1:cosine,2:cosine2},
 	ANGLE:   {2:angle},
@@ -63,23 +63,23 @@ var builtins={
 	POP:     {1:arrayPop},
 	REVERSE:{1:reverse},
 	SORT:   {1:sort},
-	MILLISECOND:{0:millisec},
+	MILLISECOND:{0:millisec,noSimplify:true},
 	//ARRAY:{2:filledArray},
 	ABS:{1:absoluteValue},
 	SPLIT:{2:stringSplit},
 	JOIN:{2:arrayJoin},
 	TYPE:{1:type},
-	CLS:  {0:clearScreen},
+	CLS:  {0:clearScreen,noSimplify:true},
 	//VSYNC:{0:vsync},
 	//PRINT:{any:printList},
 	//SET:  {3:arraySet},
 	PUSH: {2:arrayPush}, //any
-	OUTPUT:{any:outputList},
-	STOP:{0:endProgram},
+	OUTPUT:{any:outputList,noSimplify:true},
+	STOP:{0:endProgram,noSimplify:true},
 	REMOVE:{2:arrayRemove1,3:arrayRemove},
 	WITHOUT:{2:without},
 	GET:{2:arrayWith},
-	COLOR:{1:color},
+	COLOR:{1:color,noSimplify:true},
 	CEIL:{1:ceil},
 	FLOOR:{1:ceil},
 	SIGN:{1:sign},
@@ -126,15 +126,14 @@ function step(a,b){
 }
 
 function assign(a,b){
-	if(a.variable){
-		b.expect(a.variable.type);
-		a.variable.set(b);
+	if(a.ref){
+		a.ref.set(b);
 	}else{
 		a.expect("array");
 		b.expect("array");
 		assert(b.length===a.length,"arrays different length");
 		for(var i=0;i<a.value.length;i++){
-			assert(a.value[i].variable,"During variable list assignment, expected variable but got "+a.value[i].type+". Perhaps you didn't mean to use =?");
+			//assert(a.value[i].ref,"During variable list assignment, expected variable but got "+a.value[i].type+". Perhaps you didn't mean to use =?");
 			assign(a.value[i],b.value[i]);
 		}
 	}
