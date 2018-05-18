@@ -2,7 +2,7 @@
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
 var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","PRINT", "WHILE","WEND", "DO","LOOP", "REF", "TO", "STEP","IN"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":1.123};
+var constants={"#PI":Math.PI,"#VERSION":1.124};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number

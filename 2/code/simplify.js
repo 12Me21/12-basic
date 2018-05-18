@@ -12,7 +12,7 @@ function simplify(rpn){
 				Array.prototype.push.apply(outStack,valStack);
 				outStack.push(token);
 				valStack=[];
-			break;case "function":case "operator":
+			break;case "function":case "operator":case "unary":
 				if(builtins[token.name] && !builtins[token.name].noSimplify && builtins[token.name][token.args] && valStack.length>=token.args){
 					outStack.push(builtins[token.name][token.args].apply(null,arrayRight(valStack,token.args)));
 					for(var j=0;j<token.args;j++)
