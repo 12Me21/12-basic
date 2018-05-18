@@ -30,7 +30,7 @@
 		</style>
 	</head>
 	<body>
-		<textarea id="$code" cols="80" spellcheck="false">
+		<textarea id="$code" cols="80" onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0,s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 FOR I=1 TO 10
  PRINT I
 NEXT</textarea>
