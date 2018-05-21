@@ -5,12 +5,14 @@
 var ast,functions;
 var ip,block,ifs,switches;
 var variables;
+var line;
 
 var stopped=true,interval;
 var steps=1000,stepDelay=1,doVsync=false;
 
 var inputs=[];
 var consoleColor,consoleBG;
+var stack=[];
 
 var consoleOut;
 
@@ -61,14 +63,12 @@ function stop(error){
 		console.log("trying to end");
 		stopped=true;
 		window.clearInterval(interval);
-		consoleColor=undefined;
 		consoleOut.print("==================== ["+currentTimeString()+"]\n");
-		if(error)
-			consoleOut.print("ERROR: "+error,undefined,"red");
-		else
-			consoleOut.print("OK");
-		consoleOut.print("\n");
+		console.log("error",error)
+		consoleOut.print("Program stopped\n");
 	}
+	if(error)
+		consoleOut.print("[Error] on line "+line+":\n"+error+"\n",undefined,"#FF7777");
 }
 
 function enterBlock(into){
@@ -121,8 +121,8 @@ function callFunction(name,args){
 			var x=step();
 			if(stopped)
 				break;
-			if(x){
-				variables.pop()
+			if(x!==undefined){
+				variables.pop();
 				return x;
 			}
 		}
@@ -136,7 +136,7 @@ function callFunction(name,args){
 function expr(rpn,unUsed){
 	assert(rpn.constructor===Array,"Internal error: invalid expression");
 	//assert(!(unUsed && rpn.length===1 && rpn[0].type==="variable" && !rpn[0].isDec),"Variable '"+rpn[0].name+"' was used on its own. This is probably a mistake.");
-	var stack=[];
+	var initialLength=stack.length;
 	for(var i=0;i<rpn.length;i++){
 		switch(rpn[i].type){
 			case "variable":
@@ -163,11 +163,9 @@ function expr(rpn,unUsed){
 				retval=callFunction(rpn[i].name,arrayRight(stack,args));
 				for(var j=0;j<args;j++)
 					stack.pop();
-				if(retval){
-					stack.push(retval);
-				}else{
-					//aaa
-				}
+				if(!retval)
+					assert(i===rpn.length-1,"Function did not return a value and was not the last operation.")
+				stack.push(retval);
 			break;case "arrayLiteral":
 				var args=rpn[i].args;
 				var array=new Value("array",arrayRight(stack,args));
@@ -178,8 +176,8 @@ function expr(rpn,unUsed){
 				assert(false,"Internal error: bad token "+rpn[i].type);
 		}
 	}
-	assert(stack.length===1,"Internal error: stack not empty");
-	return stack[0];
+	assert(stack.length-1===initialLength,"Internal error, stack leak");
+	return stack.pop();
 }
 
 function print(text){
@@ -198,6 +196,7 @@ function step(){
 	/////////////////
 	while(current(ip)>=current(block).code.length){
 		var now=current(block);
+		line=now.line;
 		switch(now.type){
 			case "WHILE":
 				if(expr(now.condition).truthy())
@@ -251,7 +250,7 @@ function step(){
 				return;
 			break;case "FUNC":
 				leaveBlock();
-				return true;
+				return false;
 			break;case "IF":case "ELSE":case "ELSEIF":case "CASE":case "SWITCH":
 				leaveBlock();
 			break;default:
@@ -259,6 +258,8 @@ function step(){
 		}
 	}
 	var now=current(block).code[current(ip)];
+	line=now.line;
+	console.log(line,"line");
 	//////////////////
 	//entering block//
 	//////////////////
@@ -353,8 +354,11 @@ function step(){
 			}
 		break;case "PRINT":
 			var printString="";
-			for(var i=0;i<now.value.length;i++)
-				printString+=(i>0?" ":"")+expr(now.value[i]).toString();
+			for(var i=0;i<now.value.length;i++){
+				var x=expr(now.value[i])
+				assert(x.constructor===Value,"invalid value to print");
+				printString+=(i>0?" ":"")+x.toString();
+			}
 			print(printString+"\n");
 		break;case "expression":
 			expr(now.value,true);
@@ -383,7 +387,7 @@ function step(){
 			}
 			if(now.value)
 				return expr(now.value);
-			return true;
+			return false;
 		break;case "SWITCH":
 			var condition=expr(now.condition);
 			enterBlock();

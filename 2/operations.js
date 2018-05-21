@@ -184,7 +184,7 @@ function multiply(a,b){
 function divide(a,b){
 	a.expect("number");
 	b.expect("number");
-	assert(b.value!==0,"divide by 0");
+	assert(b.value!==0,"Tried to divide '"+a.value+"' by zero.");
 	return new Value("number",a.value/b.value);
 }
 
@@ -192,7 +192,7 @@ function divide(a,b){
 function div(a,b){
 	a.expect("number");
 	b.expect("number");
-	assert(b.value!==0,"divide by 0");
+	assert(b.value!==0,"Tried to divide '"+a.value+"' by zero.");
 	return new Value("number",Math.floor(a.value/b.value));
 }
 
@@ -200,7 +200,7 @@ function div(a,b){
 function mod(a,b){
 	a.expect("number");
 	a.expect("number");
-	assert(b.value!==0,"divide by 0");
+	assert(b.value!==0,"Tried to divide '"+a.value+"' by zero.");
 	return new Value("number",a.value-Math.floor(a.value/b.value)*b.value);
 }
 

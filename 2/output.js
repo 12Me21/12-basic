@@ -3,6 +3,7 @@ function Output(element){
 }
 
 Output.prototype.print=function(text,textColor,backgroundColor){
+	console.log("printing:",text);
 	var html="";
 	if(textColor)
 		html+="<span style='color:"+escapeHTMLAttribute(textColor)+";'>";

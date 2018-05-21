@@ -15,8 +15,13 @@ function parse(nextToken){
 	//enter code block
 	function startBlock(){
 		current.code=[];
+		current.line=line; //I don't fucking know
+		//die
+		//kill yourself if you are reading this and you're not me
 		currentBlocks.push(current);
 		current={};
+		//haha got you
+		//dead
 	}
 	//leave code block
 	function endBlock(){
@@ -214,6 +219,7 @@ function parse(nextToken){
 				current.type="expression";
 		}
 		if(current.type){
+			current.line=line;
 			currentBlocks[currentBlocks.length-1].code.push(current);//push to current block!
 			current={};
 		}
