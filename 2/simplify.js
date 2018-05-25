@@ -1,6 +1,7 @@
 //this simplifies an expression
 //things like 1+1 (1,1,+) become 2 (2)
 function simplify(rpn){
+	return rpn; //sorry nothing
 	var valStack=[];
 	var outStack=[];
 	for(var i=0;i<rpn.length;i++){

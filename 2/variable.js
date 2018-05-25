@@ -8,13 +8,13 @@ IndirectVariableReference.prototype.getFrom=function(vars){
 	if(this.level===0)
 		return vars[0][this.index];
 	return vars[vars.length-1][this.index];
-}
+};
 
 IndirectVariableReference.prototype.matchRef=function(vars,directRef){
 	if(this.level===0)
 		return vars[0][this.index];
 	vars[vars.length-1][this.index]=directRef;
-}
+};
 
 function Variable(type,value){
 	this.type=type;
@@ -43,6 +43,6 @@ Variable.prototype.set=function(value){
 			this.value.type=value.type;
 			this.value.value=value.value;
 	}
-}
+};
 
 function th(n){return n+=[,"st","nd","rd"][n%100>>3^1&&n%10]||"th"}

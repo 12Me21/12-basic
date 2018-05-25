@@ -1,8 +1,8 @@
 //list of keywords
 //does not include OPERATORS or CONSTANTS or fake keywords TO/STEP
-var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "BREAK","CONTINUE","PRINT", "WHILE","WEND", "DO","LOOP", "REF", "TO", "STEP","IN"];
+var KEYWORDS=["SWITCH","CASE","AS","ENDSWITCH", "EXIT","END", "IF","THEN","ELSE","ELSEIF","ENDIF", "FUNC","RETURN","ENDFUNC", "FOR","NEXT", "REPEAT","UNTIL", "CONTINUE","PRINT", "WHILE","WEND", "DO","LOOP", "REF", "TO", "STEP","IN"];
 //CHECK <condition>,"error"
-var constants={"#PI":Math.PI,"#VERSION":1.124};
+var constants={"#PI":Math.PI,"#VERSION":1.500};
 //version system:
 //x.000 - major version number
 //0.xx0 - minor version number
@@ -28,8 +28,6 @@ function tokenize(code){
 		//These are single CHARACTERS (that is, in a language that has a char type, these should be chars and not strings)
 		isAlpha=(c>='A'&&c<='Z'||c>='a'&&c<='z');
 		isDigit=(c>='0'&&c<='9');
-		//if(c==='\n')
-			//lineNumber++;
 	}
 	
 	function getWord(startSkip,endSkip){
@@ -48,10 +46,13 @@ function tokenize(code){
 		//word operators
 		else if(upper==="AND"||upper==="OR"||upper==="XOR")
 			type="operator";
-		//true/false
+		//keyword number
 		else if(upper==="TRUE"){
 			type="number";
 			upper=1;
+		}else if(upper==="INFINITY"){
+			type="number";
+			upper=Infinity;
 		}else if(upper==="FALSE"){
 			type="number";
 			upper=0;
@@ -151,19 +152,19 @@ function tokenize(code){
 					return push("error");
 			}
 			return push("error");
-		//less than, less than or equal, left shift
+		// < <= <<
 		break;case '<':
 			next();
 			if(c==='='||c==='<')
 				next();
 			return push("operator");
-		//greater than, greater than or equal, right shift
+		// > >= >>
 		break;case '>':
 			next();
 			if(c==='='||c==='>')
 				next();
 			return push("operator");
-		//equal, equal more
+		// = ==
 		break;case '=':
 			next();
 			if(c==='='){
@@ -171,7 +172,7 @@ function tokenize(code){
 				return push("operator");
 			}
 			return push("equal");
-		//logical not, not equal
+		// ! !=
 		break;case '!':
 			next();
 			if(c==='='){
@@ -179,12 +180,10 @@ function tokenize(code){
 				return push("operator");
 			}
 			return push("unary");
-		break;case '-':
+		// - ~
+		break;case '-':case '~':
 			next();
-			return push("minus");
-		break;case '~':
-			next();
-			return push("xor");
+			return push("maybeUnary");
 		//add, subtract, multiply, divide, bitwise and, or
 		break;case '+':case '*':case '/':case '&':case '|':case '%':case '\\':case '^':
 			next();

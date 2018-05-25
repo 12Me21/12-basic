@@ -27,6 +27,12 @@ Value.prototype.set=function(value,dynamic){
 	this.value=value.value;
 };
 
+Value.prototype.isIn=function(list){
+	for(var i=0;i<list.length;i++)
+		if(compare(this,list[i]))
+			return true;
+}
+
 Value.prototype.toString=function(base){
 	switch(this.type){
 		case "number":
@@ -101,5 +107,18 @@ function typeFromName(name){
 function arrayRight(array,elements){
 	return elements?array.slice(-elements):[];
 }
+
+function last(array){
+	return array[array.length-1];
+}
+
+function expectedMessage(wanted,got){
+	return "Expected "+wanted+", got `"+got+"` instead.";
+}
+
+function expected(wanted,got){
+	return "Expected "+wanted+", got `"+got+"` instead.";
+}
+
 //var oldLog=console.log;
 //console.log=function(a,b,c,d,e,f){if(debug){oldLog(a,b,c,d,e,f)}} //go to hell
