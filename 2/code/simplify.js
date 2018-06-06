@@ -1,6 +1,7 @@
 //this simplifies an expression
-//things like 1+1 become 2
+//things like 1+1 (1,1,+) become 2 (2)
 function simplify(rpn){
+	return rpn; //sorry nothing
 	var valStack=[];
 	var outStack=[];
 	for(var i=0;i<rpn.length;i++){
@@ -36,5 +37,6 @@ function simplify(rpn){
 				assert(false,"bad "+token.type);
 		}
 	}
+	assert(valStack.length<=1,"Internal error: simplification failed, constant stack not empty")
 	return outStack.concat(valStack);
 }

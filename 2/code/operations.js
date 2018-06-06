@@ -3,40 +3,39 @@ var builtins={
 	"!":  {1:logicalNot},
 	"NOT":{1:logicalNot},
 	
-	"^":  {2:exponent},
+	"^":  {2:exponent,precedence:13},
 	
-	"*":  {2:multiply},
-	"/":  {2:divide},
-	"%":  {2:mod},
-	"\\": {2:div},
+	"*":  {2:multiply,precedence:12},
+	"/":  {2:divide,precedence:12},
+	"%":  {2:mod,precedence:12},
+	"\\": {2:div,precedence:12},
 	
-	"+":  {2:add},
-	"-":  {2:subtract,1:negate},
+	"+":  {2:add,precedence:11},
+	"-":  {1:negate,2:subtract,precedence:11},
 	
-	"TO": {2:range,3:rangeStep},
-	//"STEP": {2:step},
-	"UNTIL": {2:openRange},
+	"<<": {2:leftShift,precedence:10},
+	">>": {2:rightShift,precedence:10},
 	
-	"<<": {2:leftShift},
-	">>": {2:rightShift},
+	"TO": {2:range,3:rangeStep,precedence:9},
+	"UNTIL": {2:openRange,precedence:9},
 	
-	">":  {2:greaterThan},
-	"<":  {2:lessThan},
-	">=": {2:greaterOrEqual},
-	"<=": {2:lessOrEqual},
+	">":  {2:greaterThan,precedence:8},
+	"<":  {2:lessThan,precedence:8},
+	">=": {2:greaterOrEqual,precedence:8},
+	"<=": {2:lessOrEqual,precedence:8},
 	
-	"==": {2:equal},
-	"!=": {2:notEqual},
+	"==": {2:equal,precedence:7},
+	"!=": {2:notEqual,precedence:7},
 	
-	"&":  {2:bitwiseAnd},
-	"~":  {2:bitwiseXor,1:bitwiseNot},
-	"|":  {2:bitwiseOr},
+	"&":  {2:bitwiseAnd,precedence:6},
+	"~":  {1:bitwiseNot,2:bitwiseXor,precedence:5},
+	"|":  {2:bitwiseOr,precedence:4},
 	
-	"AND":{2:logicalAnd},
-	"XOR":{2:logicalXor},
-	"OR": {2:logicalOr},
+	"AND":{2:logicalAnd,precedence:3},
+	"XOR":{2:logicalXor,precedence:2},
+	"OR": {2:logicalOr,precedence:1},
 	
-	"=":  {2:assign,noSimplify:true},
+	"=":  {2:assign,noSimplify:true,precedence:0},
 	
 	MID$:    {3:mid,2:mid1},
 	ASC:     {1:ascii},
@@ -78,7 +77,7 @@ var builtins={
 	STOP:{0:endProgram,noSimplify:true},
 	REMOVE:{2:arrayRemove1,3:arrayRemove},
 	WITHOUT:{2:without},
-	GET:{2:arrayWith},
+	//GET:{2:arrayWith},
 	COLOR:{1:color,noSimplify:true},
 	CEIL:{1:ceil},
 	FLOOR:{1:ceil},
@@ -109,7 +108,7 @@ function rangeStep(a,b,c){
 }
 
 function openRange(a,b){
-	var array=[]
+	var array=[];
 	for(var i=a.value;i<b.value;i++)
 		array.push(new Value("number",i));
 	return new Value("array",array);
@@ -118,7 +117,7 @@ function openRange(a,b){
 function step(a,b){
 	a.expect("array");
 	b.expect("number");
-	assert(b.value>0,"step value must be at least greater than 0")
+	assert(b.value>0,"step value must be at least greater than 0");
 	var array=[];
 	for(i=0;i<a.value.length;i+=b.value)
 		array.push(a.value[Math.floor(i)]);
@@ -126,6 +125,7 @@ function step(a,b){
 }
 
 function assign(a,b){
+	console.log("assign",a,b)
 	if(a.ref){
 		a.ref.set(b);
 	}else{
@@ -184,7 +184,7 @@ function multiply(a,b){
 function divide(a,b){
 	a.expect("number");
 	b.expect("number");
-	assert(b.value!==0,"divide by 0");
+	assert(b.value!==0,"Tried to divide '"+a.value+"' by zero.");
 	return new Value("number",a.value/b.value);
 }
 
@@ -192,7 +192,7 @@ function divide(a,b){
 function div(a,b){
 	a.expect("number");
 	b.expect("number");
-	assert(b.value!==0,"divide by 0");
+	assert(b.value!==0,"Tried to divide '"+a.value+"' by zero.");
 	return new Value("number",Math.floor(a.value/b.value));
 }
 
@@ -200,7 +200,7 @@ function div(a,b){
 function mod(a,b){
 	a.expect("number");
 	a.expect("number");
-	assert(b.value!==0,"divide by 0");
+	assert(b.value!==0,"Tried to divide '"+a.value+"' by zero.");
 	return new Value("number",a.value-Math.floor(a.value/b.value)*b.value);
 }
 
@@ -283,15 +283,30 @@ function bitwiseNot(a){
 }
 
 function bitwiseAnd(a,b){
-	a.expect("number");
-	b.expect("number");
-	return new Value("number",a.value & b.value);
+	b.expect(a.type);
+	if(a.type==="number")
+		return new Value("number",a.value & b.value);
+	a.expect("array");
+	var list=[];
+	for(var i=0;i<a.value.length;i++)
+		if(!a.value[i].isIn(list) && a.value[i].isIn(b.value))
+			list.push(a.value[i]);
+	return new Value("array",list);
 }
 
 function bitwiseOr(a,b){
-	a.expect("number");
-	b.expect("number");
-	return new Value("number",a.value | b.value);
+	b.expect(a.type);
+	if(a.type==="number")
+		return new Value("number",a.value | b.value);
+	a.expect("array");
+	var list=[];
+	for(var i=0;i<a.value.length;i++)
+		if(!a.value[i].isIn(list))
+			list.push(a.value[i]);
+	for(var i=0;i<b.value.length;i++)
+		if(!b.value[i].isIn(list))
+			list.push(b.value[i]);
+	return new Value("array",list);
 }
 
 function bitwiseXor(a,b){
@@ -311,5 +326,3 @@ function rightShift(a,b){
 	b.expect("number");
 	return new Value("number",a.value>>b.value);
 }
-
-

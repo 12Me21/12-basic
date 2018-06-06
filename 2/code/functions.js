@@ -21,10 +21,22 @@ function type(a){
 	return new Value("string",a.type);
 }
 
+/*function search(a,b){
+	var list=[];
+	switch(a.type){
+		case "array":
+			
+		break;case "string":
+			
+		break;default:
+			assert(false,"search requires array or string");
+	}
+}*/ //return list of matches!
+
 function stringSplit(a,b){
 	a.expect("string");
 	b.expect("string");
-	var split=a.value.split(b.value)
+	var split=a.value.split(b.value);
 	var array=[];
 	for(i=0;i<split.length;i++)
 		array.push(new Value("string",split[i]));
@@ -43,20 +55,21 @@ function arrayWith(a,b){
 	var array=[];
 	for(var i=0;i<b.value.length;i++)
 		array.push(a.value[b.value[i].value]);
-	return new Value("array",array)
+	return new Value("array",array);
 }
 
 function arrayPush(a,b){
 	a.expect("array");
 	assert(a.ref,"invalid push");
-	a.ref.value.push(b);
+	console.log(a.ref.value)
+	a.ref.value.value.push(b);
 }
 
 function arrayPop(a){
 	a.expect("array");
 	assert(a.ref,"need variable for POP");
 	assert(a.value.length>0,"array empty");
-	return a.ref.value.pop();
+	return a.ref.value.value.pop();
 }
 
 function right(a,b){
@@ -85,14 +98,14 @@ function without(a,b){
 	a.expect("array");
 	switch(b.type){
 		case "number":
-			return new Value("array",a.value.filter(function(v,i){return i!=b.value}));
+			return new Value("array",a.value.filter(function(v,i){return i!=b.value;}));
 		case "array":
 			var indexes=[];
 			for(var i=0;i<b.value.length;i++){
 				b.value[i].expect("number");
 				indexes.push(b.value[i].value);
 			}
-			return new Value("array",a.value.filter(function(v,i){return indexes.indexOf(i)==-1}));
+			return new Value("array",a.value.filter(function(v,i){return indexes.indexOf(i)==-1;}));
 		default:
 			b.expect("array");
 	}
@@ -141,7 +154,7 @@ function arrayRemove1(array,position){
 	array.expect("array");
 	assert(array.variable,"expected variable");
 	position.expect("number");
-	position=position.value|0
+	position=position.value|0;
 	x=(array.variable.value[position]);
 	array.variable=new Value("array",array.variable.value.splice(position,1));
 	return x;
@@ -151,10 +164,9 @@ function arrayRemove(array,position){
 	array.expect("array");
 	assert(array.variable,"expected variable");
 	position.expect("number");
-	position=position.value|0
-	return (array.variable.value[position])
-	array.variable=new Value(array.variable.value.splice(position,1));
-	
+	position=position.value|0;
+	return (array.variable.value[position]);
+	//array.variable=new Value(array.variable.value.splice(position,1));
 }
 
 function arrayReverse(a){
@@ -350,7 +362,7 @@ function lcase(a){
 }
 
 function clearScreen(){
-	console.log("clearing")
+	console.log("clearing");
 	$console.textContent="";
 }
 

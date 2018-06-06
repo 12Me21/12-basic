@@ -5,12 +5,14 @@
 var ast,functions;
 var ip,block,ifs,switches;
 var variables;
-
+var line;
+var killEXPR;
 var stopped=true,interval;
 var steps=1000,stepDelay=1,doVsync=false;
 
 var inputs=[];
 var consoleColor,consoleBG;
+var stack=[];
 
 var consoleOut;
 
@@ -57,16 +59,16 @@ function stepLevel1(){
 
 //end program
 function stop(error){
-	console.log("trying to end");
-	stopped=true;
-	window.clearInterval(interval);
-	consoleColor=undefined;
-	consoleOut.print("==================== ["+currentTimeString()+"]\n");
+	if(!stopped){
+		console.log("trying to end");
+		stopped=true;
+		window.clearInterval(interval);
+		consoleOut.print("==================== ["+currentTimeString()+"]\n");
+		console.log("error",error);
+		consoleOut.print("Program stopped\n");
+	}
 	if(error)
-		consoleOut.print("ERROR: "+error,undefined,"red");
-	else
-		consoleOut.print("OK");
-	consoleOut.print("\n");
+		consoleOut.print("[Error] on line "+line+":\n"+error+"\n",undefined,"#FF7777");
 }
 
 function enterBlock(into){
@@ -79,6 +81,8 @@ function enterBlock(into){
 }
 
 function leaveBlock(){
+	if(last(block).type==="FUNC")
+		variables.pop();
 	block.pop();
 	ip.pop();
 	ifs.pop();
@@ -103,38 +107,40 @@ function callFunction(name,args){
 		variables.push(scopeFromTemplate(functions[name].variables));
 		for(var i=0;i<parameters.length;i++){
 			if(parameters[i].isRef){
+				//perhaps: <type1> REF <type2> <var>
+				//meaning that the variable must be of <type1> but the value must be <type2> (as <var> is created with a type of <type2>)
 				assert(args[i].ref,"function requires variable");
 				var x=parameters[i].getFrom(variables);
-				assert(x.type==="unset" || x.type===args[i].ref.type,"Function '"+name+"' expected "+x.type+" variable as "+th(i+1)+" argument, got "+args[i].ref.type+" variable instead.");
+				//assert(x.type!=="dynamic","Dynamic type not allowed here");
+				//assert(x.type==="unset" || x.type===args[i].ref.value.type,"Function '"+name+"' expected "+x.type+" variable as "+th(i+1)+" argument, got "+args[i].ref.type+" variable instead.");
+				parameters[i].getFrom(variables).set(args[i]);//type check
 				parameters[i].matchRef(variables,args[i].ref);
 			}else
 				parameters[i].getFrom(variables).set(args[i]);
 		}
 		enterBlock(functions[name]);
+		//mi wile moli.
 		while(1){
 			var x=step();
 			if(stopped)
 				break;
-			if(x){
-				variables.pop()
+			if(x!==undefined)
 				return x;
-			}
 		}
-		
 	}
 }
 
 ///////////////////////
 //evaluate expression//
 ///////////////////////
-function expr(rpn,unUsed){
+function evaluate(rpn,expectedType){
 	assert(rpn.constructor===Array,"Internal error: invalid expression");
 	//assert(!(unUsed && rpn.length===1 && rpn[0].type==="variable" && !rpn[0].isDec),"Variable '"+rpn[0].name+"' was used on its own. This is probably a mistake.");
-	var stack=[];
+	var initialLength=stack.length;
+	console.log(rpn)
 	for(var i=0;i<rpn.length;i++){
 		switch(rpn[i].type){
 			case "variable":
-				console.log(rpn[i].variable,variables);
 				var ref=rpn[i].variable.getFrom(variables);
 				var x=ref.value.copy();
 				x.ref=ref;
@@ -148,10 +154,8 @@ function expr(rpn,unUsed){
 				index=Math.floor(index.value);
 				assert(index>=0 && index<array.value.length,"Tried to access element "+index+" of an array with length "+array.value.length+".");
 				var x=array.value[index];
-				if(array.ref){
-					console.log("ref",array.ref.value.value[index])
+				if(array.ref)
 					x.ref=new Variable("dynamic",array.ref.value.value[index]);
-				}
 				stack.push(x);
 			break;case "operator":case "function":case "unary": //I think these are all just "function" ...
 				var args=rpn[i].args;
@@ -160,11 +164,9 @@ function expr(rpn,unUsed){
 				retval=callFunction(rpn[i].name,arrayRight(stack,args));
 				for(var j=0;j<args;j++)
 					stack.pop();
-				if(retval){
-					stack.push(retval);
-				}else{
-					//aaa
-				}
+				if(!retval)
+					assert(i===rpn.length-1,"Function did not return a value and was not the last operation.");
+				stack.push(retval);
 			break;case "arrayLiteral":
 				var args=rpn[i].args;
 				var array=new Value("array",arrayRight(stack,args));
@@ -174,9 +176,17 @@ function expr(rpn,unUsed){
 			break;default:
 				assert(false,"Internal error: bad token "+rpn[i].type);
 		}
+		if(killEXPR){
+			while(stack.length > initialLength)
+				stack.pop();
+			return true;
+		}
 	}
-	assert(stack.length===1,"Internal error: stack not empty");
-	return stack[0];
+	assert(stack.length-1===initialLength,"Internal error, stack leak");
+	var returned=stack.pop();
+	if(expectedType)
+		returned.expect(expectedType);
+	return returned;
 }
 
 function print(text){
@@ -189,15 +199,17 @@ function jumpTo(pos){
 }
 
 function step(){
+	killEXPR=false;
 	jumpTo(current(ip)+1);
 	/////////////////
 	//exiting block//
 	/////////////////
 	while(current(ip)>=current(block).code.length){
 		var now=current(block);
+		line=now.line;
 		switch(now.type){
 			case "WHILE":
-				if(expr(now.condition).truthy())
+				if(evaluate(now.condition).truthy())
 					jumpTo(0);
 				else
 					leaveBlock();
@@ -205,41 +217,31 @@ function step(){
 				jumpTo(0);
 				//...
 			break;case "REPEAT":
-				if(!expr(now.condition).truthy())
+				if(!evaluate(now.condition).truthy())
 					jumpTo(0);
 				else
 					leaveBlock();
 			break;case "FOR":
-				var variable=expr(now.variable);
-				assert(variable=variable.ref,"FOR loop needs a variable.");
-				variable.value.expect("number");
-				if(now.step!==undefined){
-					var value=expr(now.step);
-					value.expect("number");
-					variable.value.value+=value.value;
+				//get variable
+				var variable;
+				assert(variable=evaluate(now.variable,"number").ref,"FOR loop needs a variable.");
+				//increment variable
+				if(now.step){
+					variable.value.value+=evaluate(now.step,"number").value;
 				}else
 					variable.value.value++;
-				var value=expr(now.end);
-				value.expect("number");
-				if(now.open){
-					if(variable.value.value<value.value)
-						jumpTo(0);
-					else
-						leaveBlock();
+				//check if past end
+				if(now.array){
+					var inRange=variable.value.value<evaluate(now.array,"array").value.length;
 				}else{
-					if(variable.value.value<=value.value)
-						jumpTo(0);
+					var value=evaluate(now.end,"number");
+					if(now.open)
+						var inRange=variable.value.value<value.value;
 					else
-						leaveBlock();
+						var inRange=variable.value.value<=value.value;
 				}
-			break;case "FORIN":
-				var variable=expr(now.variable);
-				assert(variable=variable.ref,"FOR loop needs a variable.");
-				variable.value.expect("number");
-				variable.value.value++;
-				var array=expr(now.array);
-				array.expect("array");
-				if(variable.value.value<array.value.length)
+				//exit
+				if(inRange)
 					jumpTo(0);
 				else
 					leaveBlock();
@@ -248,7 +250,7 @@ function step(){
 				return;
 			break;case "FUNC":
 				leaveBlock();
-				return true;
+				return false;
 			break;case "IF":case "ELSE":case "ELSEIF":case "CASE":case "SWITCH":
 				leaveBlock();
 			break;default:
@@ -256,87 +258,54 @@ function step(){
 		}
 	}
 	var now=current(block).code[current(ip)];
+	line=now.line;
 	//////////////////
 	//entering block//
 	//////////////////
 	switch(now.type){
 		case "WHILE":
-			if(expr(now.condition).truthy())
+			if(evaluate(now.condition).truthy())
 				enterBlock();
 		break;case "DO":
 			enterBlock();
 		break;case "REPEAT":case "FUNC":
 			enterBlock();
 		break;case "FOR":
-			var value=expr(now.start);
-			value.expect("number");
-			var variable=expr(now.variable);
-			assert(variable=variable.ref,"FOR loop needs a variable.");
-			variable.value.expect("number");
-			variable.value.value=value.value;
-			value=expr(now.end);
-			value.expect("number");
-			if(now.open){
-				if(variable.value.value<value.value)
-					enterBlock();
+			var variable;
+			assert(variable=evaluate(now.variable,"number").ref,"FOR loop needs a variable.");
+			if(now.start)
+				variable.value.value=evaluate(now.start,"number").value;
+			else
+				variable.value.value=0;
+			//check if past end
+			if(now.array){
+				var inRange=evaluate(now.array,"array").value.length>0;
 			}else{
-				if(variable.value.value<=value.value)
-					enterBlock();
+				var value=evaluate(now.end,"number");
+				if(now.open)
+					var inRange=variable.value.value<value.value;
+				else
+					var inRange=variable.value.value<=value.value;
 			}
-		break;case "FORIN":
-			var variable=expr(now.variable);
-			assert(variable=variable.ref,"FOR loop needs a variable.");
-			variable.value.expect("number");
-			variable.value.value=0; //bad
-			var array=expr(now.array);
-			array.expect("array");
-			if(array.value.length>0)
+			if(inRange)
 				enterBlock();
 		break;case "EXIT":
-			var levels=now.levels;
-			if(levels){
-				levels=expr(now.levels);
-				levels.expect("number");
-				levels=Math.floor(levels.value);
-				assert(levels>=1,"EXIT requires a positive number");
-			}else
-				levels=1;
-			while(1){
-				var x=current(block);
-				if(x.type==="main")
+			for(var i=block.length-1;i>0;i--){
+				if(now.exitType==="FUNC" ? block[i].type==="FUNC" && now.exitName===block[i].name : block[i].type===now.exitType){
+					leaveBlock();
 					break;
-				else{
-					levels--;
-					if(!levels){
-						leaveBlock();
-						break;
-					}
 				}
 				leaveBlock();
 			}
-			//wow why's this part so hecking long?
-		break;case "BREAK": //M U L T I - L E V E L   B R E A K !
-			var levels=now.levels;
-			if(levels){
-				levels=expr(now.levels);
-				levels.expect("number");
-				levels=Math.floor(levels.value);
-				assert(levels>=1,"BREAK requires a positive number");
-			}else
-				levels=1;
-			while(1){
-				var x=current(block);
-				if(x.type==="main"){
-					assert(false,"BREAK must be used inside a FOR, WHILE, REPEAT, or DO loop. (It is not used for SWITCH/CASE).");
-				}else if(x.type==="FOR"||x.type==="WHILE"||x.type==="REPEAT"||x.type==="DO"){
-					levels--;
-					if(!levels){
-						leaveBlock();
-						break;
-					}
-				}
-				leaveBlock();
-			}
+			if(!now.exitName)
+				jumpTo(current(ip)-1); //idk why this is needed but I want to die now
+			assert(i,"`EXIT` Could not find `"+now.exitType+"` to exit from.");
+			killEXPR=true;
+			return true;
+			//for(var i=0;i<now.levels;i++)
+			//	leaveBlock();
+		//wow why's this part so hecking long?
+		//break;case "BREAK": //M U L T I - L E V E L   B R E A K !
 		break;case "CONTINUE":
 			while(1){
 				var x=current(block);
@@ -350,13 +319,16 @@ function step(){
 			}
 		break;case "PRINT":
 			var printString="";
-			for(var i=0;i<now.value.length;i++)
-				printString+=(i>0?" ":"")+expr(now.value[i]).toString();
+			for(var i=0;i<now.value.length;i++){
+				var x=evaluate(now.value[i]);
+				assert(x.constructor===Value,"invalid value to print");
+				printString+=(i>0?" ":"")+x.toString();
+			}
 			print(printString+"\n");
 		break;case "expression":
-			expr(now.value,true);
+			evaluate(now.value);
 		break;case "IF":
-			if(expr(now.condition).truthy()){
+			if(evaluate(now.condition).truthy()){
 				ifs[ifs.length-1]=true;
 				enterBlock();
 			}else
@@ -366,7 +338,7 @@ function step(){
 				enterBlock();
 		break;case "ELSEIF":
 			if(!ifs[ifs.length-1]){
-				if(expr(now.condition).truthy()){
+				if(evaluate(now.condition).truthy()){
 					ifs[ifs.length-1]=true;
 					enterBlock();
 				}
@@ -379,17 +351,17 @@ function step(){
 					break;
 			}
 			if(now.value)
-				return expr(now.value);
-			return true;
+				return evaluate(now.value);
+			return false;
 		break;case "SWITCH":
-			var condition=expr(now.condition);
+			var condition=evaluate(now.condition);
 			enterBlock();
 			switches[switches.length-1]=condition;
 			ifs[ifs.length-1]=false;
 		break;case "CASE":
 			if(now.conditions){
 				for(var i=0;i<now.conditions.length;i++){
-					var condition=expr(now.conditions[i]);
+					var condition=evaluate(now.conditions[i]);
 					if(equal(switches[switches.length-1],condition).truthy()){
 						ifs[ifs.length-1]=true;
 						enterBlock();
@@ -406,7 +378,7 @@ function step(){
 function getNextInputValue(){
 	var x=inputs.shift();
 	if(x===undefined)
-		return "";
+		x="";
 	return new Value("string",x);
 }
 
